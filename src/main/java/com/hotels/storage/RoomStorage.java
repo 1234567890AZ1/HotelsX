@@ -49,8 +49,7 @@ public class RoomStorage {
         this.plugin = plugin;
         this.rooms = new ConcurrentHashMap<>();
         this.collections = new ConcurrentHashMap<>();
-        // 存到 plugins/Hotels/ 目录，ScriptIrc 不会清这里
-        File dataDir = new File("plugins/Hotels");
+        File dataDir = plugin.getDataFolder();
         if (!dataDir.exists()) {
             dataDir.mkdirs();
         }
@@ -75,7 +74,13 @@ public class RoomStorage {
             return;
         }
 
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(dataFile);
+        YamlConfiguration config = new YamlConfiguration();
+        try {
+            config.load(new java.io.FileReader(dataFile, java.nio.charset.StandardCharsets.UTF_8));
+        } catch (java.io.IOException | org.bukkit.configuration.InvalidConfigurationException e) {
+            plugin.getLogger().log(Level.SEVERE, "加载房间数据文件失败", e);
+            return;
+        }
 
         // 加载房间
         if (config.contains("rooms")) {
@@ -129,7 +134,7 @@ public class RoomStorage {
         config.set("collections", colList);
 
         try {
-            config.save(dataFile);
+            java.nio.file.Files.write(dataFile.toPath(), config.saveToString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "保存数据失败", e);
         }

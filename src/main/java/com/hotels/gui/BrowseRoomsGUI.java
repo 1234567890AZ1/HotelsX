@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 public class BrowseRoomsGUI {
 
     public static final String GUI_NAME = "browse_rooms";
-    private static final int PAGE_SIZE = 45;
+    private static final int PAGE_SIZE = 36;
 
     public static void open(Player player, HotelsPlugin plugin) {
         List<HotelRoom> rooms = plugin.getRoomStorage().getAvailableRooms();
@@ -143,7 +143,6 @@ public class BrowseRoomsGUI {
         }
         inv.setItem(5, filterItem);
 
-        int slot = 9;
         if (rooms.isEmpty()) {
             ItemStack empty = new ItemStack(Material.BARRIER);
             ItemMeta meta = empty.getItemMeta();
@@ -153,7 +152,9 @@ public class BrowseRoomsGUI {
             }
             inv.setItem(22, empty);
         } else {
+            int slot = 9;
             for (HotelRoom room : pageRooms) {
+                if (slot >= 45) break;
                 inv.setItem(slot++, createRoomItem(room, player));
             }
         }
