@@ -1,8 +1,8 @@
 /*
- * Hotels - 酒店房间管理插件
+ * HotelsX - 酒店房间管理插件
  * MIT License
  *
- * Copyright (c) 2024-2026 Hotels
+ * Copyright (c) 2024-2026 HotelsX
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the Software), to deal
@@ -25,6 +25,7 @@
 package com.hotels.command;
 
 import com.hotels.HotelsPlugin;
+import com.hotels.gui.AdminPanelGUI;
 import com.hotels.gui.BrowseRoomsGUI;
 import com.hotels.gui.MainMenuGUI;
 import com.hotels.gui.MyRoomsGUI;
@@ -147,6 +148,10 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
 
             case "debug":
                 handleDebug(player);
+                break;
+
+            case "elevator":
+                handleElevator(player);
                 break;
 
             case "admin":
@@ -338,6 +343,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
 
         if (args.length < 2) {
             player.sendMessage("§6=== 酒店管理 ===");
+            player.sendMessage("§e/ht admin panel §7- 打开管理员面板");
             player.sendMessage("§e/ht admin list §7- 所有房间列表");
             player.sendMessage("§e/ht admin tp <ID> §7- 传送到指定房间");
             player.sendMessage("§e/ht admin remove <ID> §7- 强制删除房间");
@@ -346,6 +352,11 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
         }
 
         switch (args[1].toLowerCase()) {
+            case "panel":
+                AdminPanelGUI.open(player);
+                plugin.log(player, "打开管理员面板");
+                break;
+
             case "list":
                 player.sendMessage("§6所有房间 (§e" + plugin.getRoomStorage().getRoomCount() + "§6):");
                 for (HotelRoom room : plugin.getRoomStorage().getAllRooms()) {
@@ -437,6 +448,23 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
         } else {
             plugin.log(player, "调试模式已关闭");
             player.sendMessage("§c调试模式已关闭");
+        }
+    }
+
+    private void handleElevator(Player player) {
+        if (!player.isOp() && !player.hasPermission("hotels.admin")) {
+            player.sendMessage("§c你没有权限使用此指令");
+            return;
+        }
+        boolean newState = !plugin.isElevatorEnabled();
+        plugin.setElevatorEnabled(newState);
+        if (newState) {
+            player.sendMessage("§a铁块电梯已全局启用");
+            player.sendMessage("§7所有玩家站在铁块上跳跃向上传送，潜行向下传送");
+            plugin.log(player, "铁块电梯已全局启用");
+        } else {
+            plugin.log(player, "铁块电梯已全局禁用");
+            player.sendMessage("§c铁块电梯已全局禁用");
         }
     }
 

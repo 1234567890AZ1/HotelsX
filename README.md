@@ -1,4 +1,4 @@
-# Hotels - 酒店房间管理系统
+# HotelsX - 酒店房间管理系统
 
 一个 Bukkit/Spigot/Paper 插件，玩家可以圈地创建酒店房间，其他玩家可以付费入住。
 

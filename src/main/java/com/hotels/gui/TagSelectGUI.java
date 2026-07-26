@@ -1,8 +1,8 @@
 /*
- * Hotels - 酒店房间管理插件
+ * HotelsX - 酒店房间管理插件
  * MIT License
  *
- * Copyright (c) 2024-2026 Hotels
+ * Copyright (c) 2024-2026 HotelsX
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the Software), to deal
@@ -46,7 +46,7 @@ public class TagSelectGUI {
         List<String> currentTags = room.getTags();
 
         int size = Math.min(54, Math.max(9, ((presetTags.size() / 9) + 2) * 9));
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME, room), size, "§8§l✦ 选择标签");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME, room), size, "§8§l选择标签");
 
         ItemStack infoItem = new ItemStack(Material.NAME_TAG);
         ItemMeta infoMeta = infoItem.getItemMeta();

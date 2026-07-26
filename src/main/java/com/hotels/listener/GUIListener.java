@@ -1,8 +1,8 @@
 /*
- * Hotels - 酒店房间管理插件
+ * HotelsX - 酒店房间管理插件
  * MIT License
  *
- * Copyright (c) 2024-2026 Hotels
+ * Copyright (c) 2024-2026 HotelsX
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the Software), to deal
@@ -75,6 +75,8 @@ public class GUIListener implements Listener {
             handleTagSelectClick(player, event, holder);
         } else if (guiName.startsWith(CollectionGUI.GUI_NAME)) {
             handleCollectionClick(player, event, holder, guiName);
+        } else if (guiName.startsWith(AdminPanelGUI.GUI_NAME)) {
+            handleAdminPanelClick(player, event, guiName);
         }
     }
 
@@ -136,6 +138,18 @@ public class GUIListener implements Listener {
                 MainMenuGUI.open(player);
                 return;
             }
+        } else if (guiName.equals(CollectionGUI.GUI_NAME + ":my")) {
+            if (slot == 4) {
+                player.closeInventory();
+                player.sendMessage("§e请输入要搜索的酒店名称:");
+                plugin.getChatInputHandler().expectInput(player, "mycollection_search");
+                return;
+            }
+            if (slot == 49) {
+                plugin.log(player, "从我的合集返回合集管理");
+                CollectionGUI.openManage(player);
+                return;
+            }
         } else if (slot == 49) {
             if (guiName.startsWith(CollectionGUI.GUI_NAME + ":browse_all")) {
                 plugin.log(player, "从浏览合集返回合集管理");
@@ -143,7 +157,7 @@ public class GUIListener implements Listener {
             } else if (guiName.equals(CollectionGUI.GUI_NAME + ":my")) {
                 plugin.log(player, "从我的合集返回合集管理");
                 CollectionGUI.openManage(player);
-            } else if (guiName.startsWith(CollectionGUI.GUI_NAME + ":manage_collection")) {
+          } else if (guiName.startsWith(CollectionGUI.GUI_NAME + ":manage_collection")) {  
                 plugin.log(player, "从管理合集返回我的合集");
                 CollectionGUI.openMyCollections(player, plugin);
             } else if (guiName.startsWith(CollectionGUI.GUI_NAME + ":collection_rooms")) {
@@ -170,6 +184,13 @@ public class GUIListener implements Listener {
                     page = 0;
                 }
 
+                if (slot == 3) {
+                    player.closeInventory();
+                    player.sendMessage("§e请输入要搜索的房间名称:");
+                    plugin.getChatInputHandler().expectInput(player, "managecollection_search:" + col.getId());
+                    return;
+                }
+
                 if (slot == 45) {
                     plugin.log(player, "合集管理上一页: " + col.getName() + " (页 " + (page) + " → " + (page - 1) + ")");
                     CollectionGUI.openManageCollection(player, col, plugin, page - 1);
@@ -189,6 +210,13 @@ public class GUIListener implements Listener {
                 }
             } catch (NumberFormatException e) {
                 page = 0;
+            }
+
+            if (slot == 4) {
+                player.closeInventory();
+                player.sendMessage("§e请输入要搜索的酒店名称:");
+                plugin.getChatInputHandler().expectInput(player, "collection_search:" + page);
+                return;
             }
 
             if (slot == 45) {
@@ -372,6 +400,13 @@ public class GUIListener implements Listener {
 
         if (slot >= 45) return;
 
+        if (slot == 5) {
+            player.closeInventory();
+            player.sendMessage("§e请输入要搜索的房间名称或ID:");
+            plugin.getChatInputHandler().expectInput(player, "myrooms_search");
+            return;
+        }
+
         ItemStack item = event.getCurrentItem();
         if (item == null || !item.hasItemMeta()) return;
 
@@ -443,9 +478,16 @@ public class GUIListener implements Listener {
 
         if (slot >= 45) return;
 
-        if (slot == 5) {
+        if (slot == 4) {
             plugin.log(player, "打开标签筛选界面");
             BrowseRoomsGUI.openTagFilter(player, plugin);
+            return;
+        }
+
+        if (slot == 5) {
+            player.closeInventory();
+            player.sendMessage("§e请输入要搜索的房间名称或ID:");
+            plugin.getChatInputHandler().expectInput(player, "browse_search");
             return;
         }
 
@@ -646,5 +688,100 @@ public class GUIListener implements Listener {
 
         player.sendMessage("§e//wand §7- 获取选区工具（木斧）");
         player.sendMessage("§e/ht admin §7- 管理命令");
+    }
+
+    private void handleAdminPanelClick(Player player, InventoryClickEvent event, String guiName) {
+        int slot = event.getSlot();
+        ItemStack item = event.getCurrentItem();
+
+        if (!player.hasPermission("hotels.admin")) {
+            player.sendMessage("§c你没有管理员权限");
+            player.closeInventory();
+            return;
+        }
+
+        int page = 0;
+        try {
+            String[] parts = guiName.split(":");
+            if (parts.length >= 2) {
+                page = Integer.parseInt(parts[1]);
+            }
+        } catch (NumberFormatException e) {
+            page = 0;
+        }
+
+        if (slot == 36) {
+            plugin.log(player, "管理员后台上一页 (页 " + (page) + " → " + (page - 1) + ")");
+            AdminPanelGUI.open(player, page - 1);
+            return;
+        }
+
+        if (slot == 44) {
+            plugin.log(player, "管理员后台下一页 (页 " + (page) + " → " + (page + 1) + ")");
+            AdminPanelGUI.open(player, page + 1);
+            return;
+        }
+
+        if (slot == 45) {
+            if (event.isShiftClick()) {
+                player.closeInventory();
+                player.sendMessage("§c确认删除所有房间？在聊天框输入 §e确认 §c或 §e取消");
+                plugin.getChatInputHandler().expectInput(player, "admin_deleteall");
+            }
+            return;
+        }
+
+        if (slot == 46) {
+            plugin.getRoomStorage().loadAll();
+            plugin.log(player, "管理员重新加载数据");
+            player.sendMessage("§a数据已重新加载");
+            AdminPanelGUI.open(player, page);
+            return;
+        }
+
+        if (slot == 49) {
+            plugin.log(player, "从管理员后台返回主菜单");
+            MainMenuGUI.open(player);
+            return;
+        }
+
+        if (slot == 52) {
+            player.closeInventory();
+            player.sendMessage("§e请输入要搜索的房间名称或ID:");
+            plugin.getChatInputHandler().expectInput(player, "admin_search:" + page);
+            return;
+        }
+
+        if (slot < 9 || slot >= 36) return;
+
+        if (item == null || !item.hasItemMeta()) return;
+
+        String displayName = item.getItemMeta().getDisplayName();
+        if (!displayName.startsWith("§e")) return;
+
+        String roomName = ChatColor.stripColor(displayName);
+
+        for (HotelRoom room : plugin.getRoomStorage().getAllRooms()) {
+            if (room.getName().equals(roomName)) {
+                if (event.isShiftClick() && event.isLeftClick()) {
+                    Location loc = new Location(
+                            Bukkit.getWorld(room.getWorldName()),
+                            room.getSpawnX(), room.getSpawnY(), room.getSpawnZ(),
+                            room.getSpawnYaw(), room.getSpawnPitch()
+                    );
+                    player.teleport(loc);
+                    plugin.log(player, "管理员传送: 到房间 " + room.getName());
+                    player.sendMessage("§a已传送到房间 " + room.getName());
+                } else if (event.isRightClick()) {
+                    player.closeInventory();
+                    player.sendMessage("§c确认删除房间 §e" + room.getName() + "§c？在聊天框输入 §e确认 §c或 §e取消");
+                    plugin.getChatInputHandler().expectInput(player, "admin_delete:" + room.getId() + ":" + page);
+                } else {
+                    plugin.log(player, "管理员打开房间管理: " + room.getName());
+                    RoomManageGUI.open(player, room, plugin);
+                }
+                return;
+            }
+        }
     }
 }

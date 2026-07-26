@@ -1,8 +1,8 @@
 /*
- * Hotels - 酒店房间管理插件
+ * HotelsX - 酒店房间管理插件
  * MIT License
  *
- * Copyright (c) 2024-2026 Hotels
+ * Copyright (c) 2024-2026 HotelsX
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the Software), to deal
@@ -156,6 +156,11 @@ public class RoomStorage {
         saveAll();
     }
 
+    public void clearAllRooms() {
+        rooms.clear();
+        saveAll();
+    }
+
     /**
      * 获取所有房间
      */
@@ -257,6 +262,19 @@ public class RoomStorage {
     public HotelRoom getRoomByGuest(UUID guestUUID) {
         for (HotelRoom room : rooms.values()) {
             if (room.isOccupied() && room.getCurrentGuest() != null && room.getCurrentGuest().equals(guestUUID)) {
+                return room;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 根据位置获取所在的房间
+     */
+    public HotelRoom getRoomAtLocation(org.bukkit.Location loc) {
+        if (loc == null || loc.getWorld() == null) return null;
+        for (HotelRoom room : rooms.values()) {
+            if (room.containsLocation(loc)) {
                 return room;
             }
         }

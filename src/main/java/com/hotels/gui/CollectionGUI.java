@@ -1,8 +1,8 @@
 /*
- * Hotels - 酒店房间管理插件
+ * HotelsX - 酒店房间管理插件
  * MIT License
  *
- * Copyright (c) 2024-2026 Hotels
+ * Copyright (c) 2024-2026 HotelsX
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the Software), to deal
@@ -43,32 +43,32 @@ public class CollectionGUI {
     public static final String GUI_NAME = "collection";
 
     public static void openManage(Player player) {
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":manage"), 27, "§8§l✦ 酒店合集");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":manage"), 27, "§8§l酒店合集");
 
         ItemStack border = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
         for (int i = 0; i < 9; i++) inv.setItem(i, border);
         for (int i = 18; i < 27; i++) inv.setItem(i, border);
 
-        inv.setItem(11, createItem(Material.ENDER_CHEST, "§d§l◈ 浏览所有酒店",
+        inv.setItem(11, createItem(Material.ENDER_CHEST, "§d§l浏览所有酒店",
                 "§7查看所有玩家创建的酒店合集",
                 "",
-                "§8▸ §d点击浏览"));
+                "§8点击浏览"));
 
-        inv.setItem(13, createItem(Material.CHEST, "§a§l◈ 创建新酒店",
+        inv.setItem(13, createItem(Material.CHEST, "§a§l创建新酒店",
                 "§7创建一个新的房间合集",
                 "§7创建后可以将自己的房间加入",
                 "",
-                "§8▸ §a点击创建"));
+                "§8点击创建"));
 
-        inv.setItem(15, createItem(Material.BOOKSHELF, "§e§l◈ 我的酒店",
+        inv.setItem(15, createItem(Material.BOOKSHELF, "§e§l我的酒店",
                 "§7查看和管理你创建的酒店合集",
                 "",
-                "§8▸ §e点击查看"));
+                "§8点击查看"));
 
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l← 返回");
+            backMeta.setDisplayName("§c§l返回");
             back.setItemMeta(backMeta);
         }
         inv.setItem(22, back);
@@ -82,20 +82,33 @@ public class CollectionGUI {
 
     public static void openBrowseAll(Player player, HotelsPlugin plugin, int page) {
         List<RoomCollection> allCols = new ArrayList<>(plugin.getRoomStorage().getAllCollections());
+        openBrowseAll(player, plugin, allCols, page);
+    }
+
+    public static void openBrowseAll(Player player, HotelsPlugin plugin, List<RoomCollection> collections, int page) {
         
-        int totalPages = (int) Math.ceil((double) allCols.size() / 36);
+        int totalPages = (int) Math.ceil((double) collections.size() / 36);
         if (page < 0) page = 0;
         if (page >= totalPages) page = Math.max(0, totalPages - 1);
 
         int start = page * 36;
-        int end = Math.min(start + 36, allCols.size());
-        List<RoomCollection> pageCols = allCols.subList(start, end);
+        int end = Math.min(start + 36, collections.size());
+        List<RoomCollection> pageCols = collections.subList(start, end);
 
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":browse_all:" + page), 54, "§8§l✦ 浏览酒店 §7(" + (page + 1) + "/" + Math.max(1, totalPages) + ")");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":browse_all:" + page), 54, "§8§l浏览酒店 §7(" + (page + 1) + "/" + Math.max(1, totalPages) + ")");
 
         ItemStack border = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
         for (int i = 0; i < 9; i++) inv.setItem(i, border);
         for (int i = 45; i < 54; i++) inv.setItem(i, border);
+
+        ItemStack searchItem = new ItemStack(Material.COMPASS);
+        ItemMeta searchMeta = searchItem.getItemMeta();
+        if (searchMeta != null) {
+            searchMeta.setDisplayName("§d§l搜索酒店");
+            searchMeta.setLore(java.util.Arrays.asList("§7点击搜索"));
+            searchItem.setItemMeta(searchMeta);
+        }
+        inv.setItem(4, searchItem);
 
         int slot = 9;
         for (RoomCollection col : pageCols) {
@@ -133,7 +146,7 @@ public class CollectionGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l← 返回");
+            backMeta.setDisplayName("§c§l返回");
             back.setItemMeta(backMeta);
         }
         inv.setItem(49, back);
@@ -151,14 +164,27 @@ public class CollectionGUI {
 
     public static void openMyCollections(Player player, HotelsPlugin plugin) {
         List<RoomCollection> myCols = plugin.getRoomStorage().getCollectionsByOwner(player.getUniqueId());
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":my"), 54, "§8§l✦ 我的酒店");
+        openMyCollections(player, plugin, myCols);
+    }
+
+    public static void openMyCollections(Player player, HotelsPlugin plugin, List<RoomCollection> collections) {
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":my"), 54, "§8§l我的酒店");
 
         ItemStack border = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
         for (int i = 0; i < 9; i++) inv.setItem(i, border);
         for (int i = 45; i < 54; i++) inv.setItem(i, border);
 
+        ItemStack searchItem = new ItemStack(Material.COMPASS);
+        ItemMeta searchMeta = searchItem.getItemMeta();
+        if (searchMeta != null) {
+            searchMeta.setDisplayName("§d§l搜索酒店");
+            searchMeta.setLore(java.util.Arrays.asList("§7点击搜索"));
+            searchItem.setItemMeta(searchMeta);
+        }
+        inv.setItem(4, searchItem);
+
         int slot = 9;
-        for (RoomCollection col : myCols) {
+        for (RoomCollection col : collections) {
             if (slot >= 45) break;
             List<HotelRoom> rooms = plugin.getRoomStorage().getCollectionRooms(col.getId());
 
@@ -183,7 +209,7 @@ public class CollectionGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l← 返回");
+            backMeta.setDisplayName("§c§l返回");
             back.setItemMeta(backMeta);
         }
         inv.setItem(49, back);
@@ -197,24 +223,28 @@ public class CollectionGUI {
 
     public static void openManageCollection(Player player, RoomCollection col, HotelsPlugin plugin, int page) {
         List<HotelRoom> myRooms = plugin.getRoomStorage().getRoomsByOwner(player.getUniqueId());
+        openManageCollection(player, col, plugin, myRooms, page);
+    }
+
+    public static void openManageCollection(Player player, RoomCollection col, HotelsPlugin plugin, List<HotelRoom> rooms, int page) {
         List<HotelRoom> inCol = plugin.getRoomStorage().getCollectionRooms(col.getId());
 
-        int totalPages = (int) Math.ceil((double) myRooms.size() / 36);
+        int totalPages = (int) Math.ceil((double) rooms.size() / 36);
         if (page < 0) page = 0;
         if (page >= totalPages) page = Math.max(0, totalPages - 1);
 
         int start = page * 36;
-        int end = Math.min(start + 36, myRooms.size());
-        List<HotelRoom> pageRooms = myRooms.subList(start, end);
+        int end = Math.min(start + 36, rooms.size());
+        List<HotelRoom> pageRooms = rooms.subList(start, end);
 
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":manage_collection:" + page, col), 54, "§8§l✦ " + col.getName() + " §7(" + (page + 1) + "/" + Math.max(1, totalPages) + ")");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":manage_collection:" + page, col), 54, "§8§l" + col.getName() + " §7(" + (page + 1) + "/" + Math.max(1, totalPages) + ")");
 
         ItemStack infoItem = new ItemStack(Material.CHEST);
         ItemMeta infoMeta = infoItem.getItemMeta();
         if (infoMeta != null) {
             infoMeta.setDisplayName("§6" + col.getName());
             infoMeta.setLore(Arrays.asList(
-                    "§7房间: §f" + inCol.size() + " / " + myRooms.size(),
+                    "§7房间: §f" + inCol.size() + " / " + rooms.size(),
                     "§7管理员: §f" + col.getAdminCount() + " 人",
                     "§e点击房间添加/移除"
             ));
@@ -226,17 +256,26 @@ public class CollectionGUI {
         for (int i = 45; i < 54; i++) inv.setItem(i, border);
         inv.setItem(4, infoItem);
 
-        inv.setItem(46, createItem(Material.PLAYER_HEAD, "§d§l◈ 管理员管理",
+        ItemStack searchItem = new ItemStack(Material.COMPASS);
+        ItemMeta searchMeta = searchItem.getItemMeta();
+        if (searchMeta != null) {
+            searchMeta.setDisplayName("§d§l搜索房间");
+            searchMeta.setLore(java.util.Arrays.asList("§7点击搜索"));
+            searchItem.setItemMeta(searchMeta);
+        }
+        inv.setItem(3, searchItem);
+
+        inv.setItem(46, createItem(Material.PLAYER_HEAD, "§d§l管理员管理",
                 "§7添加或移除合集管理员",
                 "§7当前 " + col.getAdminCount() + " 位管理员",
                 "",
-                "§8▸ §d点击管理"));
+                "§8点击管理"));
 
-        inv.setItem(52, createItem(Material.GOLD_INGOT, "§6§l◈ 一键定价",
+        inv.setItem(52, createItem(Material.GOLD_INGOT, "§6§l一键定价",
                 "§7统一设置合集内所有房间的价格",
                 "§7当前 " + inCol.size() + " 个房间",
                 "",
-                "§8▸ §6点击设置"));
+                "§8点击设置"));
 
         int slot = 9;
         for (HotelRoom room : pageRooms) {
@@ -272,7 +311,7 @@ public class CollectionGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l← 返回");
+            backMeta.setDisplayName("§c§l返回");
             back.setItemMeta(backMeta);
         }
         inv.setItem(49, back);
@@ -290,7 +329,7 @@ public class CollectionGUI {
 
     public static void openCollectionRooms(Player player, RoomCollection col, HotelsPlugin plugin) {
         List<HotelRoom> rooms = plugin.getRoomStorage().getCollectionRooms(col.getId());
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":collection_rooms", col), 54, "§8§l✦ " + col.getName());
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":collection_rooms", col), 54, "§8§l" + col.getName());
 
         ItemStack infoItem = new ItemStack(Material.CHEST);
         ItemMeta infoMeta = infoItem.getItemMeta();
@@ -337,7 +376,7 @@ public class CollectionGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l← 返回");
+            backMeta.setDisplayName("§c§l返回");
             back.setItemMeta(backMeta);
         }
         inv.setItem(49, back);
@@ -347,7 +386,7 @@ public class CollectionGUI {
 
     public static void openAdminManage(Player player, RoomCollection col, HotelsPlugin plugin) {
         List<Player> onlinePlayers = new ArrayList<>(Bukkit.getOnlinePlayers());
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":admin_manage", col), 54, "§8§l✦ 管理员: " + col.getName());
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":admin_manage", col), 54, "§8§l管理员: " + col.getName());
 
         ItemStack infoItem = new ItemStack(Material.PLAYER_HEAD);
         ItemMeta infoMeta = infoItem.getItemMeta();
@@ -403,7 +442,7 @@ public class CollectionGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l← 返回");
+            backMeta.setDisplayName("§c§l返回");
             back.setItemMeta(backMeta);
         }
         inv.setItem(49, back);

@@ -1,8 +1,8 @@
 /*
- * Hotels - 酒店房间管理插件
+ * HotelsX - 酒店房间管理插件
  * MIT License
  *
- * Copyright (c) 2024-2026 Hotels
+ * Copyright (c) 2024-2026 HotelsX
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the Software), to deal
@@ -68,15 +68,29 @@ public class ChatInputHandler implements Listener {
         pendingInputs.remove(player.getUniqueId());
 
         String message = event.getMessage().trim();
+        final String finalContext = context;
 
-        // 处理非房间上下文（合集创建/删除、房间删除、折扣、合集定价等）
+        org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+            handleChatInput(player, finalContext, message);
+        });
+    }
+
+    private void handleChatInput(Player player, String context, String message) {
         if (!context.contains(":") ||
             context.startsWith("deletecollection:") ||
             context.startsWith("setcollectionduration:") ||
             context.startsWith("deleteroom:") ||
             context.startsWith("setdiscountprice:") ||
             context.startsWith("setdiscountduration:") ||
-            context.startsWith("setcollectionprice:")) {
+            context.startsWith("setcollectionprice:") ||
+            context.startsWith("admin_delete:") ||
+            context.equals("admin_deleteall") ||
+            context.startsWith("admin_search:") ||
+            context.equals("browse_search") ||
+            context.equals("myrooms_search") ||
+            context.startsWith("collection_search:") ||
+            context.equals("mycollection_search") ||
+            context.startsWith("managecollection_search:")) {
             handleNonRoomContext(player, context, message);
             return;
         }
@@ -94,7 +108,6 @@ public class ChatInputHandler implements Listener {
             return;
         }
 
-        // 验证房主
         if (!room.getOwner().equals(player.getUniqueId())) {
             player.sendMessage("§c你不是这个房间的房主");
             return;
@@ -138,11 +151,8 @@ public class ChatInputHandler implements Listener {
         }
     }
 
-    // ===== 非房间相关的上下文处理 =====
-
     private void handleNonRoomContext(Player player, String context, String message) {
         if (context.equals("createcollection")) {
-            // 创建合集 - 第一步：输入名称
             if (message.length() > 32) {
                 player.sendMessage("§c合集名称最长 32 个字符");
                 return;
@@ -152,7 +162,6 @@ public class ChatInputHandler implements Listener {
                 return;
             }
 
-            // 检查数量限制
             int maxCols = plugin.getConfig().getInt("max-collections-per-player", 5);
             int currentCols = plugin.getRoomStorage().getCollectionsByOwner(player.getUniqueId()).size();
             if (currentCols >= maxCols) {
@@ -160,14 +169,12 @@ public class ChatInputHandler implements Listener {
                 return;
             }
 
-            // 保存名称，然后询问时长
             player.sendMessage("§e请输入使用时长（分钟），输入 0 表示不限时:");
             plugin.getChatInputHandler().expectInput(player, "setcollectionduration:" + message);
             return;
         }
 
         if (context.startsWith("setcollectionduration:")) {
-            // 创建合集 - 第二步：输入时长
             String name = context.substring("setcollectionduration:".length());
 
             int duration;
@@ -177,7 +184,7 @@ public class ChatInputHandler implements Listener {
                     player.sendMessage("§c时长不能为负数");
                     return;
                 }
-                if (duration > 43200) { // 最大30天
+                if (duration > 43200) {
                     player.sendMessage("§c时长不能超过 43200 分钟（30天）");
                     return;
                 }
@@ -342,11 +349,207 @@ public class ChatInputHandler implements Listener {
             }
             return;
         }
+
+        if (context.startsWith("admin_delete:")) {
+            String[] parts = context.substring("admin_delete:".length()).split(":", 2);
+            if (parts.length < 2) return;
+            String roomId = parts[0];
+            int page;
+            try {
+                page = Integer.parseInt(parts[1]);
+            } catch (NumberFormatException e) {
+                page = 0;
+            }
+
+            if (message.equalsIgnoreCase("confirm") || message.equalsIgnoreCase("yes") || message.equals("确认")) {
+                HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
+                if (room != null) {
+                    String name = room.getName();
+                    plugin.getRoomStorage().removeRoom(roomId);
+                    plugin.log(player, "管理员删除房间: " + name + " (ID: " + roomId + ")");
+                    player.sendMessage("§c房间 §e" + name + " §c已删除");
+                    com.hotels.gui.AdminPanelGUI.open(player, page);
+                } else {
+                    player.sendMessage("§c房间不存在");
+                }
+            } else {
+                player.sendMessage("§c已取消删除");
+                com.hotels.gui.AdminPanelGUI.open(player, page);
+            }
+            return;
+        }
+
+        if (context.equals("admin_deleteall")) {
+            if (message.equalsIgnoreCase("confirm") || message.equalsIgnoreCase("yes") || message.equals("确认")) {
+                int count = plugin.getRoomStorage().getAllRooms().size();
+                plugin.getRoomStorage().clearAllRooms();
+                plugin.log(player, "管理员强制删除所有房间: 共 " + count + " 个");
+                player.sendMessage("§c已强制删除所有房间，共 §e" + count + " §c个");
+                com.hotels.gui.AdminPanelGUI.open(player, 0);
+            } else {
+                player.sendMessage("§c已取消删除");
+                com.hotels.gui.AdminPanelGUI.open(player, 0);
+            }
+            return;
+        }
+
+        if (context.startsWith("admin_search:")) {
+            int page;
+            try {
+                page = Integer.parseInt(context.substring("admin_search:".length()));
+            } catch (NumberFormatException e) {
+                page = 0;
+            }
+
+            if (message.isEmpty()) {
+                player.sendMessage("§c搜索内容不能为空");
+                com.hotels.gui.AdminPanelGUI.open(player, page);
+                return;
+            }
+
+            boolean found = false;
+            StringBuilder results = new StringBuilder("§e搜索结果:\n");
+            for (HotelRoom room : plugin.getRoomStorage().getAllRooms()) {
+                if (room.getName().toLowerCase().contains(message.toLowerCase()) ||
+                    room.getId().toLowerCase().contains(message.toLowerCase())) {
+                    results.append("§6").append(room.getName()).append(" §7(ID: ").append(room.getId()).append(")\n");
+                    found = true;
+                }
+            }
+
+            if (!found) {
+                player.sendMessage("§c未找到匹配的房间");
+            } else {
+                player.sendMessage(results.toString());
+            }
+            com.hotels.gui.AdminPanelGUI.open(player, page);
+            return;
+        }
+
+        if (context.equals("browse_search")) {
+            if (message.isEmpty()) {
+                player.sendMessage("§c搜索内容不能为空");
+                com.hotels.gui.BrowseRoomsGUI.open(player, plugin);
+                return;
+            }
+
+            java.util.List<com.hotels.model.HotelRoom> allRooms = plugin.getRoomStorage().getAvailableRooms();
+            java.util.List<com.hotels.model.HotelRoom> filtered = allRooms.stream()
+                    .filter(r -> r.getName().toLowerCase().contains(message.toLowerCase()) ||
+                                r.getId().toLowerCase().contains(message.toLowerCase()))
+                    .collect(java.util.stream.Collectors.toList());
+
+            if (filtered.isEmpty()) {
+                player.sendMessage("§c未找到匹配的房间");
+                com.hotels.gui.BrowseRoomsGUI.open(player, plugin);
+            } else {
+                com.hotels.gui.BrowseRoomsGUI.openWithRooms(player, filtered, plugin, null, 0);
+            }
+            return;
+        }
+
+        if (context.equals("myrooms_search")) {
+            if (message.isEmpty()) {
+                player.sendMessage("§c搜索内容不能为空");
+                com.hotels.gui.MyRoomsGUI.open(player, plugin, 0);
+                return;
+            }
+
+            java.util.List<com.hotels.model.HotelRoom> allRooms = plugin.getRoomStorage().getRoomsByOwner(player.getUniqueId());
+            java.util.List<com.hotels.model.HotelRoom> filtered = allRooms.stream()
+                    .filter(r -> r.getName().toLowerCase().contains(message.toLowerCase()) ||
+                                r.getId().toLowerCase().contains(message.toLowerCase()))
+                    .collect(java.util.stream.Collectors.toList());
+
+            if (filtered.isEmpty()) {
+                player.sendMessage("§c未找到匹配的房间");
+                com.hotels.gui.MyRoomsGUI.open(player, plugin, 0);
+            } else {
+                com.hotels.gui.MyRoomsGUI.openWithRooms(player, filtered, plugin, 0);
+            }
+            return;
+        }
+
+        if (context.startsWith("collection_search:")) {
+            int page = 0;
+            try {
+                page = Integer.parseInt(context.split(":")[1]);
+            } catch (Exception e) {
+                page = 0;
+            }
+
+            if (message.isEmpty()) {
+                player.sendMessage("§c搜索内容不能为空");
+                com.hotels.gui.CollectionGUI.openBrowseAll(player, plugin, page);
+                return;
+            }
+
+            java.util.List<com.hotels.model.RoomCollection> allCols = new java.util.ArrayList<>(plugin.getRoomStorage().getAllCollections());
+            java.util.List<com.hotels.model.RoomCollection> filtered = allCols.stream()
+                    .filter(c -> c.getName().toLowerCase().contains(message.toLowerCase()))
+                    .collect(java.util.stream.Collectors.toList());
+
+            if (filtered.isEmpty()) {
+                player.sendMessage("§c未找到匹配的酒店");
+                com.hotels.gui.CollectionGUI.openBrowseAll(player, plugin, page);
+            } else {
+                com.hotels.gui.CollectionGUI.openBrowseAll(player, plugin, filtered, 0);
+            }
+            return;
+        }
+
+        if (context.equals("mycollection_search")) {
+            if (message.isEmpty()) {
+                player.sendMessage("§c搜索内容不能为空");
+                com.hotels.gui.CollectionGUI.openMyCollections(player, plugin);
+                return;
+            }
+
+            java.util.List<com.hotels.model.RoomCollection> allCols = new java.util.ArrayList<>(plugin.getRoomStorage().getCollectionsByOwner(player.getUniqueId()));
+            java.util.List<com.hotels.model.RoomCollection> filtered = allCols.stream()
+                    .filter(c -> c.getName().toLowerCase().contains(message.toLowerCase()))
+                    .collect(java.util.stream.Collectors.toList());
+
+            if (filtered.isEmpty()) {
+                player.sendMessage("§c未找到匹配的酒店");
+                com.hotels.gui.CollectionGUI.openMyCollections(player, plugin);
+            } else {
+                com.hotels.gui.CollectionGUI.openMyCollections(player, plugin, filtered);
+            }
+            return;
+        }
+
+        if (context.startsWith("managecollection_search:")) {
+            String colId = context.substring("managecollection_search:".length());
+            com.hotels.model.RoomCollection col = plugin.getRoomStorage().getCollection(colId);
+            if (col == null) {
+                player.sendMessage("§c合集不存在");
+                com.hotels.gui.CollectionGUI.openManage(player);
+                return;
+            }
+
+            if (message.isEmpty()) {
+                player.sendMessage("§c搜索内容不能为空");
+                com.hotels.gui.CollectionGUI.openManageCollection(player, col, plugin);
+                return;
+            }
+
+            java.util.List<com.hotels.model.HotelRoom> allRooms = plugin.getRoomStorage().getRoomsByOwner(player.getUniqueId());
+            java.util.List<com.hotels.model.HotelRoom> filtered = allRooms.stream()
+                    .filter(r -> r.getName().toLowerCase().contains(message.toLowerCase()) ||
+                                r.getId().toLowerCase().contains(message.toLowerCase()))
+                    .collect(java.util.stream.Collectors.toList());
+
+            if (filtered.isEmpty()) {
+                player.sendMessage("§c未找到匹配的房间");
+                com.hotels.gui.CollectionGUI.openManageCollection(player, col, plugin);
+            } else {
+                com.hotels.gui.CollectionGUI.openManageCollection(player, col, plugin, filtered, 0);
+            }
+            return;
+        }
     }
 
-    /**
-     * 清除玩家的待输入状态
-     */
     public void clear(Player player) {
         pendingInputs.remove(player.getUniqueId());
     }

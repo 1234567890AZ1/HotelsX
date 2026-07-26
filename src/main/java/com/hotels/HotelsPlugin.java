@@ -1,8 +1,8 @@
 /*
- * Hotels - 酒店房间管理插件
+ * HotelsX - 酒店房间管理插件
  * MIT License
  *
- * Copyright (c) 2024-2026 Hotels
+ * Copyright (c) 2024-2026 HotelsX
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the Software), to deal
@@ -26,8 +26,10 @@ package com.hotels;
 
 import com.hotels.command.HotelsCommand;
 import com.hotels.listener.ChatInputHandler;
+import com.hotels.listener.ElevatorListener;
 import com.hotels.listener.GUIListener;
 import com.hotels.listener.RoomGuardListener;
+import com.hotels.listener.RoomProtectListener;
 import com.hotels.listener.SelectionListener;
 import com.hotels.model.HotelRoom;
 import com.hotels.model.RoomCollection;
@@ -38,7 +40,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
- * Hotels - 酒店房间管理插件
+ * HotelsX - 酒店房间管理插件
  */
 public class HotelsPlugin extends JavaPlugin {
 
@@ -50,6 +52,7 @@ public class HotelsPlugin extends JavaPlugin {
     private CheckinHandler checkinHandler;
     private ChatInputHandler chatInputHandler;
     private boolean debugMode;
+    private boolean elevatorEnabled;
 
     @Override
     public void onEnable() {
@@ -64,6 +67,7 @@ public class HotelsPlugin extends JavaPlugin {
         this.economyManager = new EconomyManager(this);
         this.checkinHandler = new CheckinHandler(this);
         this.chatInputHandler = new ChatInputHandler(this);
+        this.elevatorEnabled = getConfig().getBoolean("elevator.enabled", false);
 
         // 加载数据
         roomStorage.loadAll();
@@ -76,6 +80,8 @@ public class HotelsPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new SelectionListener(this), this);
         getServer().getPluginManager().registerEvents(chatInputHandler, this);
         getServer().getPluginManager().registerEvents(new RoomGuardListener(this), this);
+        getServer().getPluginManager().registerEvents(new RoomProtectListener(this), this);
+        getServer().getPluginManager().registerEvents(new ElevatorListener(this), this);
 
         // 注册命令
         HotelsCommand hotelsCommand = new HotelsCommand(this);
@@ -138,6 +144,20 @@ public class HotelsPlugin extends JavaPlugin {
 
     public void log(String message) {
         log(null, message);
+    }
+
+    public boolean isElevatorEnabled() {
+        return elevatorEnabled;
+    }
+
+    public boolean isElevatorEnabledFor(Player player) {
+        return elevatorEnabled;
+    }
+
+    public void setElevatorEnabled(boolean enabled) {
+        this.elevatorEnabled = enabled;
+        getConfig().set("elevator.enabled", enabled);
+        saveConfig();
     }
 
     /**

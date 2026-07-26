@@ -37,3 +37,21 @@ room-tags:
 # HTTP API 配置
 # 启动后可通过 HTTP 请求查询房间和合集数据
 api-port: 17409
+
+# 铁块电梯设置
+elevator:
+  # 是否启用电梯功能
+  enabled: true
+  # 最大搜索距离（方块）
+  max-distance: 64
+
+# 房间保护设置
+protection:
+  # 是否保护房间内方块不被破坏
+  block-break-protection: true
+  # 是否保护房间内方块不被放置
+  block-place-protection: true
+  # 是否保护房间内容器不被他人打开
+  container-protection: true
+  # 是否保护房间不被爆炸破坏
+  explosion-protection: true

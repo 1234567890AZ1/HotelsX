@@ -1,8 +1,8 @@
 /*
- * Hotels - 酒店房间管理插件
+ * HotelsX - 酒店房间管理插件
  * MIT License
  *
- * Copyright (c) 2024-2026 Hotels
+ * Copyright (c) 2024-2026 HotelsX
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the Software), to deal
@@ -47,7 +47,10 @@ public class MyRoomsGUI {
 
     public static void open(Player player, HotelsPlugin plugin, int page) {
         List<HotelRoom> rooms = plugin.getRoomStorage().getRoomsByOwner(player.getUniqueId());
+        openWithRooms(player, rooms, plugin, page);
+    }
 
+    public static void openWithRooms(Player player, List<HotelRoom> rooms, HotelsPlugin plugin, int page) {
         int totalPages = (int) Math.ceil((double) rooms.size() / PAGE_SIZE);
         if (page < 0) page = 0;
         if (page >= totalPages) page = Math.max(0, totalPages - 1);
@@ -56,7 +59,7 @@ public class MyRoomsGUI {
         int end = Math.min(start + PAGE_SIZE, rooms.size());
         List<HotelRoom> pageRooms = rooms.subList(start, end);
 
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":" + page), 54, "§8§l🏠 我的房间 §7(" + (page + 1) + "/" + Math.max(1, totalPages) + ")");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":" + page), 54, "§8§l我的房间 §7(" + (page + 1) + "/" + Math.max(1, totalPages) + ")");
 
         ItemStack border = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
         ItemMeta borderMeta = border.getItemMeta();
@@ -72,13 +75,22 @@ public class MyRoomsGUI {
         ItemStack titleItem = new ItemStack(Material.GOLD_BLOCK);
         ItemMeta titleMeta = titleItem.getItemMeta();
         if (titleMeta != null) {
-            titleMeta.setDisplayName("§e§l🏠 我的房间");
+            titleMeta.setDisplayName("§e§l我的房间");
             List<String> lore = new ArrayList<>();
             lore.add("§7共 §e" + rooms.size() + " §7个房间");
             titleMeta.setLore(lore);
             titleItem.setItemMeta(titleMeta);
         }
-        inv.setItem(4, titleItem);
+        inv.setItem(3, titleItem);
+
+        ItemStack searchItem = new ItemStack(Material.COMPASS);
+        ItemMeta searchMeta = searchItem.getItemMeta();
+        if (searchMeta != null) {
+            searchMeta.setDisplayName("§d§l搜索房间");
+            searchMeta.setLore(java.util.Arrays.asList("§7点击搜索"));
+            searchItem.setItemMeta(searchMeta);
+        }
+        inv.setItem(5, searchItem);
 
         int slot = 9;
         for (HotelRoom room : pageRooms) {
@@ -88,7 +100,7 @@ public class MyRoomsGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l← 返回");
+            backMeta.setDisplayName("§c§l返回");
             backMeta.setLore(java.util.Arrays.asList("§7返回主菜单"));
             back.setItemMeta(backMeta);
         }
@@ -127,18 +139,24 @@ public class MyRoomsGUI {
 
     private static ItemStack createRoomItem(HotelRoom room) {
         Material material;
+        String statusColor;
+
         switch (room.getStatus()) {
             case AVAILABLE:
                 material = Material.GREEN_WOOL;
+                statusColor = "§a";
                 break;
             case OCCUPIED:
                 material = Material.RED_WOOL;
+                statusColor = "§c";
                 break;
             case MAINTENANCE:
                 material = Material.GRAY_WOOL;
+                statusColor = "§7";
                 break;
             default:
                 material = Material.WHITE_WOOL;
+                statusColor = "§7";
         }
 
         ItemStack item = new ItemStack(material);
@@ -148,16 +166,25 @@ public class MyRoomsGUI {
 
             List<String> lore = new ArrayList<>();
             lore.add("§7ID: §f" + room.getId());
-            lore.add("§7状态: " + getStatusDisplay(room.getStatus()));
-            lore.add("§7价格: §f" + room.getPrice() + " 每晚");
+            lore.add("§7状态: " + statusColor + room.getStatus().name());
+            if (room.hasActiveDiscount()) {
+                lore.add("§7价格: §m§f" + room.getPrice() + "§r §a§l¥" + room.getDiscountPrice());
+                lore.add(room.getDiscountDisplay());
+            } else {
+                lore.add("§7价格: §f" + room.getPrice() + " 每晚");
+            }
+            lore.add("§7世界: §f" + room.getWorldName());
             lore.add("§7区域: §f" + room.getVolume() + " 方块");
+            if (!room.getTags().isEmpty()) {
+                lore.add("§7标签: " + room.getTagsDisplay());
+            }
             if (room.isLocked()) {
-                lore.add("§c🔒 已上锁");
+                lore.add("§c已上锁");
             }
             if (room.hasPassword()) {
-                lore.add("§c🔑 需要密码");
+                lore.add("§c需要密码");
             }
-            if (room.isOccupied()) {
+            if (room.isOccupied() && room.getCurrentGuestName() != null) {
                 lore.add("§7客人: §f" + room.getCurrentGuestName());
             }
             lore.add("");

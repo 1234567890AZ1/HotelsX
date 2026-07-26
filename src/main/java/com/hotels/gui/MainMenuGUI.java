@@ -1,8 +1,8 @@
 /*
- * Hotels - 酒店房间管理插件
+ * HotelsX - 酒店房间管理插件
  * MIT License
  *
- * Copyright (c) 2024-2026 Hotels
+ * Copyright (c) 2024-2026 HotelsX
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the Software), to deal
@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 public class MainMenuGUI {
 
     public static final String GUI_NAME = "main_menu";
-    private static final String TITLE = "§8§l✦ 酒店系统";
+    private static final String TITLE = "§8§l酒店系统";
 
     public static void open(Player player) {
         Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME), 45, TITLE);
@@ -52,7 +52,7 @@ public class MainMenuGUI {
         for (int i = 0; i < 9; i++) {
             inv.setItem(i, borderTop);
         }
-        inv.setItem(4, createItem(Material.ENDER_PEARL, "§5§l✦ 酒 店 系 统", "§8欢迎使用"));
+        inv.setItem(4, createItem(Material.ENDER_PEARL, "§5§l酒 店 系 统", "§8欢迎使用"));
 
         ItemStack borderBottom = createItem(Material.PURPLE_STAINED_GLASS_PANE, "§8 ");
         for (int i = 36; i < 45; i++) {
@@ -69,37 +69,37 @@ public class MainMenuGUI {
                 "§7查看和管理你拥有的房间",
                 "§7你共有: §f" + countPlayerRooms(player) + " §7个房间",
                 "",
-                "§8▸ §d点击查看"));
+                "§8点击查看"));
 
         inv.setItem(13, createItem(Material.COMPASS, "§d§l浏览房间",
                 "§7查看所有可入住的房间",
                 "§7当前空闲: §f" + countAvailableRooms() + " §7间",
                 "",
-                "§8▸ §d点击浏览"));
+                "§8点击浏览"));
 
         inv.setItem(15, createItem(Material.EMERALD_BLOCK, "§a§l创建新房间",
                 "§7使用木斧选择区域后创建",
                 "§7① 获取木斧选区",
                 "§7② 站在传送点输入 /ht create <名称>",
                 "",
-                "§8▸ §a点击开始"));
+                "§8点击开始"));
 
         inv.setItem(29, createItem(Material.CHEST, "§d§l酒店合集",
                 "§7创建和管理房间合集",
                 "§7浏览所有玩家创建的酒店",
                 "",
-                "§8▸ §d点击进入"));
+                "§8点击进入"));
 
         inv.setItem(31, createItem(Material.BOOK, "§b§l帮助说明",
                 "§7查看酒店系统使用指南",
                 "§7命令列表 & 玩法说明",
                 "",
-                "§8▸ §b点击查看"));
+                "§8点击查看"));
 
         inv.setItem(33, createItem(Material.GOLD_BLOCK, "§6§l房间排行榜",
                 "§7查看最大的房间排名",
                 "",
-                "§8▸ §6点击查看"));
+                "§8点击查看"));
 
         player.openInventory(inv);
     }
@@ -129,7 +129,7 @@ public class MainMenuGUI {
         List<HotelRoom> top = allRooms.stream().limit(10).collect(Collectors.toList());
 
         int size = Math.min(54, Math.max(9, ((top.size() / 9) + 2) * 9));
-        Inventory inv = Bukkit.createInventory(new GUIHolder("ranking"), size, "§8§l✦ 房间排行榜");
+        Inventory inv = Bukkit.createInventory(new GUIHolder("ranking"), size, "§8§l房间排行榜");
 
         ItemStack border = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
         for (int i = 0; i < 9; i++) {
