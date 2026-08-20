@@ -22,6 +22,12 @@ checkin:
   # 最大入住时长（秒），0 表示不限时
   max-stay-seconds: 0
 
+# 经济系统设置
+economy:
+  # 托管模式：开启后房主收益进入"待提现余额"，需通过 Web 面板或 /ht claim 提现到钱包
+  # 关闭则入住时收益实时到账到房主钱包（默认）
+  escrow-mode: false
+
 # 房间标签预设（管理员配置，房主只能从这里选）
 # 一个房间最多 3 个标签
 room-tags:
@@ -34,9 +40,47 @@ room-tags:
   - 家庭房
   - 宠物友好
 
-# HTTP API 配置
-# 启动后可通过 HTTP 请求查询房间和合集数据
-api-port: 17409
+# Web 面板配置
+# 启动后可通过浏览器访问 Web 面板查看数据
+# Web 面板端口（修改后需执行 /ht web restart）
+web-port: 17409
+# 绑定地址：默认 127.0.0.1（仅本机可访问，最安全）
+# 如需局域网/公网访问，请改为 0.0.0.0，并务必设置强密码！
+web-bind: 127.0.0.1
+# 是否启用 Web 面板
+web-enabled: true
+
+# Web 面板管理员账号
+# 首次启动时会自动生成随机密码并保存到此处，请及时登录后修改
+# 手动添加格式示例：
+# web-admins:
+#   - username: admin
+#     password: your-strong-password
+#     role: superadmin
+# 角色说明:
+#   user       - 普通用户，只能管理自己名下的房间
+#   admin      - 管理员，可修改所有房间，但不能删除房间
+#   superadmin - 超级管理员，拥有所有权限（包括删除房间、管理管理员）
+# minecraft-name: 关联的游戏内玩家名（user 角色必需，admin 角色可选）
+web-admins: []
+
+# 会话超时（分钟）
+web-session-timeout: 30
+
+# HTTPS / SSL 配置（可选，默认关闭，保持明文 HTTP 仅本机访问）
+# 启用后浏览器访问将使用 https://
+# 启用步骤：
+#   1) 在 PowerShell 执行以下命令生成自签名证书（有效期 10 年）：
+#      openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 3650 -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+#      openssl pkcs12 -export -out web-keystore.p12 -inkey key.pem -in cert.pem -passout pass:changeit
+#   2) 将 web-keystore.p12 复制到 plugins/HotelsX/ 目录
+#   3) 把 web-ssl-enabled 改为 true，必要时调整密码
+#   4) 重启服务器或执行 /ht web restart
+# 注意：自签名证书浏览器会提示"不安全"，属正常现象；有公网域名建议用 Let's Encrypt 获取受信任证书
+web-ssl-enabled: false
+web-ssl-keystore: web-keystore.p12
+web-ssl-password: changeit
+web-ssl-keystore-type: PKCS12
 
 # 铁块电梯设置
 elevator:
@@ -55,3 +99,5 @@ protection:
   container-protection: true
   # 是否保护房间不被爆炸破坏
   explosion-protection: true
+  # 门禁系统：房间内的门/活板门/栅栏门只有房主和入住客人可以打开
+  door-protection: true

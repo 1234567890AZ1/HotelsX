@@ -79,36 +79,33 @@ public class AdminPanelGUI {
                 "§7右键: 删除房间",
                 "§7Shift+左键: 传送"));
 
-        if (totalPages > 1) {
-            boolean hasPrev = page > 0;
-            boolean hasNext = page < totalPages - 1;
-
-            inv.setItem(36, hasPrev ?
-                    createItem(Material.ARROW, "§a§l上一页") :
-                    createItem(Material.GRAY_STAINED_GLASS_PANE, "§7上一页"));
-
-            inv.setItem(40, createItem(Material.PAPER, "§e§l第 " + (page + 1) + " / " + totalPages + " 页"));
-
-            inv.setItem(44, hasNext ?
-                    createItem(Material.ARROW, "§a§l下一页") :
-                    createItem(Material.GRAY_STAINED_GLASS_PANE, "§7下一页"));
-        }
-
         for (int i = 45; i < 54; i++) {
             inv.setItem(i, redPane);
         }
 
-        inv.setItem(45, createItem(Material.BARRIER, "§c§l强制删除选中房间", "§7按住Shift点击"));
-        inv.setItem(46, createItem(Material.EMERALD, "§a§l重新加载数据", "§7点击重新加载"));
+        boolean hasPrev = page > 0;
+        boolean hasNext = page < totalPages - 1;
+
+        inv.setItem(45, hasPrev ?
+                createItem(Material.ARROW, "§a§l上一页") :
+                createItem(Material.GRAY_STAINED_GLASS_PANE, "§7上一页"));
+
+        inv.setItem(47, createItem(Material.BARRIER, "§c§l强制删除选中房间", "§7按住Shift点击"));
+        inv.setItem(48, createItem(Material.COMPASS, "§d§l搜索房间", "§7点击搜索"));
         inv.setItem(49, createItem(Material.ARROW, "§7§l返回主菜单", "§8点击返回"));
-        inv.setItem(52, createItem(Material.COMPASS, "§d§l搜索房间", "§7点击搜索"));
+        inv.setItem(50, createItem(Material.PAPER, "§e§l第 " + (page + 1) + " / " + totalPages + " 页"));
+        inv.setItem(51, createItem(Material.EMERALD, "§a§l重新加载数据", "§7点击重新加载"));
+
+        inv.setItem(53, hasNext ?
+                createItem(Material.ARROW, "§a§l下一页") :
+                createItem(Material.GRAY_STAINED_GLASS_PANE, "§7下一页"));
 
         int startIndex = page * PAGE_SIZE;
         int endIndex = Math.min(startIndex + PAGE_SIZE, totalRooms);
 
         int slot = 9;
         for (int i = startIndex; i < endIndex; i++) {
-            if (slot >= 36) break;
+            if (slot >= 45) break;
 
             HotelRoom room = allRooms.get(i);
             inv.setItem(slot++, createRoomItem(room, plugin));

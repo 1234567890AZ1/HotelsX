@@ -31,6 +31,7 @@ import com.hotels.model.RoomCollection;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -77,6 +78,8 @@ public class GUIListener implements Listener {
             handleCollectionClick(player, event, holder, guiName);
         } else if (guiName.startsWith(AdminPanelGUI.GUI_NAME)) {
             handleAdminPanelClick(player, event, guiName);
+        } else if (guiName.equals(ElevatorGUI.GUI_NAME)) {
+            handleElevatorSelectClick(player, event, holder);
         }
     }
 
@@ -611,7 +614,7 @@ public class GUIListener implements Listener {
                         targetRoom.getSpawnX(), targetRoom.getSpawnY(), targetRoom.getSpawnZ(),
                         targetRoom.getSpawnYaw(), targetRoom.getSpawnPitch()
                 );
-                player.teleport(loc);
+                com.hotels.util.SchedulerCompat.teleport(player, loc);
                 plugin.log(player, "传送到房间: " + targetRoom.getName());
                 player.sendMessage("§a已传送到房间");
                 break;
@@ -710,19 +713,19 @@ public class GUIListener implements Listener {
             page = 0;
         }
 
-        if (slot == 36) {
+        if (slot == 45) {
             plugin.log(player, "管理员后台上一页 (页 " + (page) + " → " + (page - 1) + ")");
             AdminPanelGUI.open(player, page - 1);
             return;
         }
 
-        if (slot == 44) {
+        if (slot == 53) {
             plugin.log(player, "管理员后台下一页 (页 " + (page) + " → " + (page + 1) + ")");
             AdminPanelGUI.open(player, page + 1);
             return;
         }
 
-        if (slot == 45) {
+        if (slot == 47) {
             if (event.isShiftClick()) {
                 player.closeInventory();
                 player.sendMessage("§c确认删除所有房间？在聊天框输入 §e确认 §c或 §e取消");
@@ -731,11 +734,18 @@ public class GUIListener implements Listener {
             return;
         }
 
-        if (slot == 46) {
+        if (slot == 51) {
             plugin.getRoomStorage().loadAll();
             plugin.log(player, "管理员重新加载数据");
             player.sendMessage("§a数据已重新加载");
             AdminPanelGUI.open(player, page);
+            return;
+        }
+
+        if (slot == 48) {
+            player.closeInventory();
+            player.sendMessage("§e请输入要搜索的房间名称或ID:");
+            plugin.getChatInputHandler().expectInput(player, "admin_search:" + page);
             return;
         }
 
@@ -745,14 +755,7 @@ public class GUIListener implements Listener {
             return;
         }
 
-        if (slot == 52) {
-            player.closeInventory();
-            player.sendMessage("§e请输入要搜索的房间名称或ID:");
-            plugin.getChatInputHandler().expectInput(player, "admin_search:" + page);
-            return;
-        }
-
-        if (slot < 9 || slot >= 36) return;
+        if (slot < 9 || slot >= 45) return;
 
         if (item == null || !item.hasItemMeta()) return;
 
@@ -769,7 +772,7 @@ public class GUIListener implements Listener {
                             room.getSpawnX(), room.getSpawnY(), room.getSpawnZ(),
                             room.getSpawnYaw(), room.getSpawnPitch()
                     );
-                    player.teleport(loc);
+                    com.hotels.util.SchedulerCompat.teleport(player, loc);
                     plugin.log(player, "管理员传送: 到房间 " + room.getName());
                     player.sendMessage("§a已传送到房间 " + room.getName());
                 } else if (event.isRightClick()) {
@@ -783,5 +786,41 @@ public class GUIListener implements Listener {
                 return;
             }
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void handleElevatorSelectClick(Player player, InventoryClickEvent event, GUIHolder holder) {
+        int slot = event.getSlot();
+        List<ElevatorGUI.FloorData> floors = holder.getData(List.class);
+        if (floors == null) {
+            player.closeInventory();
+            return;
+        }
+        int size = event.getInventory().getSize();
+        // GUI 从底部往上摆放：slot 最大是最低层，slot 最小是最高层
+        // idx = size - 1 - slot 对应 floors 列表中的索引（floors 已按 Y 从高到低排序）
+        int idx = size - 1 - slot;
+        if (idx < 0 || idx >= floors.size()) return;
+
+        ElevatorGUI.FloorData floor = floors.get(idx);
+        if (floor.isCurrent) {
+            player.sendMessage("§7你已经在这一层");
+            return;
+        }
+
+        Location target = floor.getTeleportLocation(player);
+        if (target == null) {
+            player.sendMessage("§c目标世界不存在");
+            return;
+        }
+
+        player.closeInventory();
+        com.hotels.util.SchedulerCompat.teleport(player, target);
+        player.getWorld().playSound(target, Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.0f);
+
+        int diff = floor.y - ((int) player.getLocation().getY() - 1);
+        String direction = diff > 0 ? "上升" : "下降";
+        plugin.log(player, "电梯选层传送: " + direction + " 到 Y:" + floor.y);
+        player.sendMessage("§a" + direction + "到 Y: §e" + floor.y);
     }
 }

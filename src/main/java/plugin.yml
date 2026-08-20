@@ -1,8 +1,9 @@
 name: Hotels
-version: '1.2.10'
+version: '1.4.2'
 main: com.hotels.HotelsPlugin
 api-version: '1.20'
-authors: ['Hotels']
+folia-supported: true
+authors: ['1234567890AZ2']
 description: '玩家圈地创建酒店房间，支持入住/租赁、上锁、经济系统的酒店管理插件'
 depend: ['Vault']
 commands:

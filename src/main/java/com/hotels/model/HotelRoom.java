@@ -175,28 +175,29 @@ public class HotelRoom implements ConfigurationSerializable {
         room.owner = UUID.fromString((String) map.get("owner"));
         room.ownerName = (String) map.get("ownerName");
         room.worldName = (String) map.get("world");
-        room.x1 = ((Number) map.get("x1")).doubleValue();
-        room.y1 = ((Number) map.get("y1")).doubleValue();
-        room.z1 = ((Number) map.get("z1")).doubleValue();
-        room.x2 = ((Number) map.get("x2")).doubleValue();
-        room.y2 = ((Number) map.get("y2")).doubleValue();
-        room.z2 = ((Number) map.get("z2")).doubleValue();
-        room.spawnX = ((Number) map.get("spawnX")).doubleValue();
-        room.spawnY = ((Number) map.get("spawnY")).doubleValue();
-        room.spawnZ = ((Number) map.get("spawnZ")).doubleValue();
-        room.spawnYaw = ((Number) map.get("spawnYaw")).floatValue();
-        room.spawnPitch = ((Number) map.get("spawnPitch")).floatValue();
-        room.price = ((Number) map.get("price")).doubleValue();
+        room.x1 = ((Number) map.getOrDefault("x1", 0)).doubleValue();
+        room.y1 = ((Number) map.getOrDefault("y1", 0)).doubleValue();
+        room.z1 = ((Number) map.getOrDefault("z1", 0)).doubleValue();
+        room.x2 = ((Number) map.getOrDefault("x2", 0)).doubleValue();
+        room.y2 = ((Number) map.getOrDefault("y2", 0)).doubleValue();
+        room.z2 = ((Number) map.getOrDefault("z2", 0)).doubleValue();
+        room.spawnX = ((Number) map.getOrDefault("spawnX", 0)).doubleValue();
+        room.spawnY = ((Number) map.getOrDefault("spawnY", 0)).doubleValue();
+        room.spawnZ = ((Number) map.getOrDefault("spawnZ", 0)).doubleValue();
+        room.spawnYaw = ((Number) map.getOrDefault("spawnYaw", 0)).floatValue();
+        room.spawnPitch = ((Number) map.getOrDefault("spawnPitch", 0)).floatValue();
+        room.price = ((Number) map.getOrDefault("price", 0)).doubleValue();
         room.password = (String) map.get("password");
-        if (room.password.isEmpty()) room.password = null;
-        room.locked = (boolean) map.get("locked");
-        room.status = RoomStatus.valueOf((String) map.get("status"));
+        if (room.password == null || room.password.isEmpty()) room.password = null;
+        room.locked = map.get("locked") != null && (boolean) map.get("locked");
+        Object statusObj = map.get("status");
+        room.status = statusObj != null ? RoomStatus.valueOf((String) statusObj) : RoomStatus.AVAILABLE;
         String guestStr = (String) map.get("currentGuest");
-        room.currentGuest = guestStr.isEmpty() ? null : UUID.fromString(guestStr);
+        room.currentGuest = guestStr == null || guestStr.isEmpty() ? null : UUID.fromString(guestStr);
         room.currentGuestName = (String) map.get("currentGuestName");
         if (room.currentGuestName != null && room.currentGuestName.isEmpty()) room.currentGuestName = null;
-        room.createdTime = ((Number) map.get("createdTime")).longValue();
-        room.checkinTime = ((Number) map.get("checkinTime")).longValue();
+        room.createdTime = ((Number) map.getOrDefault("createdTime", System.currentTimeMillis())).longValue();
+        room.checkinTime = ((Number) map.getOrDefault("checkinTime", 0)).longValue();
         room.durationMinutes = ((Number) map.getOrDefault("durationMinutes", -1)).intValue();
         room.tags = (List<String>) map.getOrDefault("tags", new ArrayList<>());
         room.discountPrice = ((Number) map.getOrDefault("discountPrice", -1)).doubleValue();
@@ -249,7 +250,26 @@ public class HotelRoom implements ConfigurationSerializable {
     public void setPrice(double price) { this.price = price; }
 
     public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
+    /** 设置密码（自动 PBKDF2 哈希存储） */
+    public void setPassword(String password) {
+        if (password == null || password.isEmpty()) {
+            this.password = null;
+        } else {
+            String hashed = com.hotels.util.PasswordUtil.hash(password);
+            this.password = hashed != null ? hashed : password; // 哈希失败时兜底明文
+        }
+    }
+    /** 验证密码（兼容旧版明文存储，首次明文验证成功后自动迁移为哈希） */
+    public boolean checkPassword(String plain) {
+        if (password == null || password.isEmpty()) return plain == null || plain.isEmpty();
+        boolean ok = com.hotels.util.PasswordUtil.verify(plain, password);
+        if (ok && com.hotels.util.PasswordUtil.isPlain(password)) {
+            // 自动迁移旧版明文密码
+            String hashed = com.hotels.util.PasswordUtil.hash(plain);
+            if (hashed != null) this.password = hashed;
+        }
+        return ok;
+    }
     public boolean hasPassword() { return password != null && !password.isEmpty(); }
 
     public boolean isLocked() { return locked; }

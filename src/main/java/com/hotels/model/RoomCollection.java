@@ -71,13 +71,13 @@ public class RoomCollection {
         col.id = (String) map.get("id");
         col.name = (String) map.get("name");
         col.description = (String) map.get("description");
-        if (col.description.isEmpty()) col.description = null;
+        if (col.description == null || col.description.isEmpty()) col.description = null;
         col.owner = UUID.fromString((String) map.get("owner"));
         col.ownerName = (String) map.get("ownerName");
         col.roomIds = (List<String>) map.get("roomIds");
         col.admins = (List<String>) map.getOrDefault("admins", new ArrayList<>());
         col.durationMinutes = ((Number) map.getOrDefault("durationMinutes", 0)).intValue();
-        col.createdTime = ((Number) map.get("createdTime")).longValue();
+        col.createdTime = ((Number) map.getOrDefault("createdTime", System.currentTimeMillis())).longValue();
         return col;
     }
 

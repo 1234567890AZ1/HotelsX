@@ -25,8 +25,11 @@
 package com.hotels;
 
 import com.hotels.model.HotelRoom;
+import com.hotels.model.Transaction;
+import com.hotels.util.SchedulerCompat;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
 import java.util.UUID;
@@ -90,8 +93,34 @@ public class CheckinHandler {
                 return;
             }
 
-            // 给房主付款
-            economy.deposit(Bukkit.getOfflinePlayer(room.getOwner()), currentPrice);
+            // 客人付款流水
+            recordTransaction(Transaction.TxType.CHECKIN_PAY,
+                    player.getUniqueId().toString(), player.getName(),
+                    currentPrice, room.getId(), room.getName(),
+                    "入住付款: " + room.getName());
+
+            // 给房主付款（支持托管模式：收益进入待提现余额）
+            OfflinePlayer ownerPlayer = Bukkit.getOfflinePlayer(room.getOwner());
+            boolean escrowMode = plugin.getConfig().getBoolean("economy.escrow-mode", false);
+            if (escrowMode) {
+                // 托管模式：租金进入房主待提现余额，需通过 Web 面板 / /ht claim 提现
+                plugin.getEscrowStorage().deposit(room.getOwner().toString(), room.getOwnerName(), currentPrice);
+
+                // 房主收款流水（待提现）
+                recordTransaction(Transaction.TxType.CHECKIN_RECV,
+                        room.getOwner().toString(), room.getOwnerName(),
+                        currentPrice, room.getId(), room.getName(),
+                        "收租(待提现): 客人 " + player.getName() + " 入住 " + room.getName());
+            } else {
+                // 实时到账模式
+                economy.deposit(ownerPlayer, currentPrice);
+
+                // 房主收款流水
+                recordTransaction(Transaction.TxType.CHECKIN_RECV,
+                        room.getOwner().toString(), room.getOwnerName(),
+                        currentPrice, room.getId(), room.getName(),
+                        "收租: 客人 " + player.getName() + " 入住 " + room.getName());
+            }
 
             plugin.log(player, "经济交易: 支付 " + currentPrice + " 给房主 " + room.getOwnerName());
         }
@@ -109,7 +138,7 @@ public class CheckinHandler {
                 room.getSpawnX(), room.getSpawnY(), room.getSpawnZ(),
                 room.getSpawnYaw(), room.getSpawnPitch()
         );
-        player.teleport(loc);
+        com.hotels.util.SchedulerCompat.teleport(player, loc);
 
         plugin.log(player, "成功入住房间: " + room.getName() + " (ID: " + room.getId() + ")");
         player.sendMessage("§a成功入住房间 §e" + room.getName() + "§a！");
@@ -137,7 +166,7 @@ public class CheckinHandler {
                     .format(new java.util.Date(expireTime)) + " §7自动退房");
 
             // 定时任务检查
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerCompat.runTaskLater(plugin, () -> {
                 // 检查玩家是否还在这个房间
                 HotelRoom current = plugin.getRoomStorage().getRoom(room.getId());
                 if (current != null && current.isOccupied()
@@ -160,31 +189,93 @@ public class CheckinHandler {
     }
 
     /**
-     * 退房
+     * 退房（退掉第一个入住的房间）
      */
     public void checkout(Player player) {
         if (player == null) return;
 
         for (HotelRoom room : plugin.getRoomStorage().getAllRooms()) {
             if (room.getCurrentGuest() != null && room.getCurrentGuest().equals(player.getUniqueId())) {
-                room.setCurrentGuest(null);
-                room.setCurrentGuestName(null);
-                room.setStatus(HotelRoom.RoomStatus.AVAILABLE);
-                room.setCheckinTime(0);
-                plugin.getRoomStorage().saveRoom(room);
-
-                plugin.log(player, "成功退房: " + room.getName() + " (ID: " + room.getId() + ")");
-                player.sendMessage("§a已从房间 §e" + room.getName() + " §a退房");
-
-                Player owner = Bukkit.getPlayer(room.getOwner());
-                if (owner != null && owner.isOnline()) {
-                    owner.sendMessage("§e" + player.getName() + " §c已从你的房间 §e" + room.getName() + " §c退房");
-                }
+                doCheckout(player, room);
                 return;
             }
         }
 
         player.sendMessage("§c你没有入住任何房间");
+    }
+
+    /**
+     * 按房间ID退房
+     */
+    public void checkout(Player player, String roomId) {
+        if (player == null) return;
+
+        HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
+        if (room == null) {
+            player.sendMessage("§c房间不存在");
+            return;
+        }
+
+        if (room.getCurrentGuest() == null || !room.getCurrentGuest().equals(player.getUniqueId())) {
+            player.sendMessage("§c你没有入住这个房间");
+            return;
+        }
+
+        doCheckout(player, room);
+    }
+
+    /**
+     * 按房间名称退房
+     */
+    public void checkoutByName(Player player, String roomName) {
+        if (player == null) return;
+
+        for (HotelRoom room : plugin.getRoomStorage().getAllRooms()) {
+            if (room.getCurrentGuest() != null
+                    && room.getCurrentGuest().equals(player.getUniqueId())
+                    && room.getName() != null
+                    && room.getName().equalsIgnoreCase(roomName)) {
+                doCheckout(player, room);
+                return;
+            }
+        }
+
+        player.sendMessage("§c你没有入住名为 §e" + roomName + " §c的房间");
+    }
+
+    /**
+     * 执行退房操作
+     */
+    private void doCheckout(Player player, HotelRoom room) {
+        room.setCurrentGuest(null);
+        room.setCurrentGuestName(null);
+        room.setStatus(HotelRoom.RoomStatus.AVAILABLE);
+        room.setCheckinTime(0);
+        plugin.getRoomStorage().saveRoom(room);
+
+        plugin.log(player, "成功退房: " + room.getName() + " (ID: " + room.getId() + ")");
+        player.sendMessage("§a已从房间 §e" + room.getName() + " §a退房");
+        player.sendMessage("§7满意的话可以给房间评分: §e/ht rate " + room.getId() + " <分数1-5> [评语]");
+
+        Player owner = Bukkit.getPlayer(room.getOwner());
+        if (owner != null && owner.isOnline()) {
+            owner.sendMessage("§e" + player.getName() + " §c已从你的房间 §e" + room.getName() + " §c退房");
+        }
+    }
+
+    /**
+     * 获取玩家当前入住的所有房间
+     */
+    public java.util.List<HotelRoom> getPlayerRooms(Player player) {
+        java.util.List<HotelRoom> rooms = new java.util.ArrayList<>();
+        if (player == null) return rooms;
+
+        for (HotelRoom room : plugin.getRoomStorage().getAllRooms()) {
+            if (room.getCurrentGuest() != null && room.getCurrentGuest().equals(player.getUniqueId())) {
+                rooms.add(room);
+            }
+        }
+        return rooms;
     }
 
     /**
@@ -208,6 +299,29 @@ public class CheckinHandler {
                 }
                 return;
             }
+        }
+    }
+
+    /**
+     * 记录经济流水
+     */
+    private void recordTransaction(Transaction.TxType type,
+                                   String playerUUID, String playerName,
+                                   double amount,
+                                   String roomId, String roomName,
+                                   String remark) {
+        try {
+            Transaction tx = new Transaction();
+            tx.setType(type);
+            tx.setPlayerUUID(playerUUID);
+            tx.setPlayerName(playerName != null ? playerName : "未知");
+            tx.setAmount(amount);
+            tx.setRoomId(roomId);
+            tx.setRoomName(roomName);
+            tx.setRemark(remark);
+            plugin.getTransactionStorage().add(tx);
+        } catch (Exception e) {
+            plugin.getLogger().warning("记录交易流水失败: " + e.getMessage());
         }
     }
 }

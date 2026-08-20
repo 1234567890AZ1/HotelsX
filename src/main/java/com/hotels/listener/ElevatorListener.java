@@ -25,12 +25,17 @@
 package com.hotels.listener;
 
 import com.hotels.HotelsPlugin;
+import com.hotels.gui.ElevatorGUI;
 import com.hotels.model.HotelRoom;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 
@@ -63,10 +68,11 @@ public class ElevatorListener implements Listener {
                 if (!canAccessBlock(player, feetLoc)) {
                     return;
                 }
-                int maxDistance = plugin.getConfig().getInt("elevator.max-distance", 64);
+                int maxDistance = plugin.getConfig().getInt("elevator.max-distance", 96);
                 org.bukkit.Location target = findTargetBlock(player.getLocation(), 1, maxDistance);
                 if (target != null) {
-                    player.teleport(target);
+                    com.hotels.util.SchedulerCompat.teleport(player, target);
+                    player.getWorld().playSound(target, Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.0f);
                     plugin.log(player, "使用电梯向上: " + player.getName());
                 } else {
                     player.sendMessage("§c上方没有找到铁块");
@@ -99,15 +105,51 @@ public class ElevatorListener implements Listener {
             return;
         }
 
-        int maxDistance = plugin.getConfig().getInt("elevator.max-distance", 64);
+        int maxDistance = plugin.getConfig().getInt("elevator.max-distance", 96);
         org.bukkit.Location target = findTargetBlock(player.getLocation(), -1, maxDistance);
 
         if (target != null) {
-            player.teleport(target);
+            com.hotels.util.SchedulerCompat.teleport(player, target);
+            player.getWorld().playSound(target, Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.0f);
             plugin.log(player, "使用电梯向下: " + player.getName());
         } else {
             player.sendMessage("§c下方没有找到铁块");
         }
+    }
+
+    /**
+     * 右键铁块打开选层 GUI（不潜行时）
+     * 潜行右键仍会触发 onPlayerSneak 向下传送，不做拦截
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerRightClickIronBlock(PlayerInteractEvent event) {
+        if (!plugin.isElevatorEnabled()) {
+            return;
+        }
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        if (event.getClickedBlock() == null || event.getClickedBlock().getType() != Material.IRON_BLOCK) {
+            return;
+        }
+        // 潜行时交给原版蹲下事件（向下一层），不打开 GUI
+        Player player = event.getPlayer();
+        if (player.isSneaking()) {
+            return;
+        }
+        if (!plugin.isElevatorEnabledFor(player)) {
+            return;
+        }
+        Location clicked = event.getClickedBlock().getLocation();
+        if (!canAccessBlock(player, clicked)) {
+            player.sendMessage("§c你无法使用此处的电梯");
+            return;
+        }
+
+        event.setCancelled(true);
+        plugin.log(player, "打开电梯选层菜单 @ (" + clicked.getBlockX() + "," + clicked.getBlockY() + "," + clicked.getBlockZ() + ")");
+        ElevatorGUI.open(player, clicked.getBlockX(), clicked.getBlockY(), clicked.getBlockZ(),
+                clicked.getWorld() != null ? clicked.getWorld().getName() : player.getWorld().getName());
     }
 
     private org.bukkit.Location findTargetBlock(org.bukkit.Location start, int direction, int maxDistance) {
@@ -115,7 +157,7 @@ public class ElevatorListener implements Listener {
         if (world == null) return null;
 
         int startY = (int) (start.getY() - 1);
-        int endY = direction > 0 ? world.getMaxHeight() : 0;
+        int endY = direction > 0 ? world.getMaxHeight() : world.getMinHeight();
         int step = direction > 0 ? 1 : -1;
 
         for (int y = startY + step * 2; direction > 0 ? y < endY : y > endY; y += step) {

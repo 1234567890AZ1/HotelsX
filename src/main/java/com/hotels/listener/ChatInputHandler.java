@@ -26,6 +26,8 @@ package com.hotels.listener;
 
 import com.hotels.HotelsPlugin;
 import com.hotels.model.HotelRoom;
+import com.hotels.util.SchedulerCompat;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -70,7 +72,7 @@ public class ChatInputHandler implements Listener {
         String message = event.getMessage().trim();
         final String finalContext = context;
 
-        org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+        SchedulerCompat.runTask(plugin, () -> {
             handleChatInput(player, finalContext, message);
         });
     }
@@ -90,7 +92,10 @@ public class ChatInputHandler implements Listener {
             context.equals("myrooms_search") ||
             context.startsWith("collection_search:") ||
             context.equals("mycollection_search") ||
-            context.startsWith("managecollection_search:")) {
+            context.startsWith("managecollection_search:") ||
+            context.equals("web_changepwd") ||
+            context.startsWith("web_register_pwd:") ||
+            context.startsWith("checkin_password:")) {
             handleNonRoomContext(player, context, message);
             return;
         }
@@ -546,6 +551,64 @@ public class ChatInputHandler implements Listener {
             } else {
                 com.hotels.gui.CollectionGUI.openManageCollection(player, col, plugin, filtered, 0);
             }
+            return;
+        }
+
+        // Web 账户注册：密码输入（/ht web register <用户名> 后聊天输入）
+        if (context.startsWith("web_register_pwd:")) {
+            String username = context.substring("web_register_pwd:".length());
+            if (message.length() < 4) {
+                player.sendMessage("§c密码至少4位，请重新输入:");
+                plugin.getChatInputHandler().expectInput(player, context);
+                return;
+            }
+            String err = plugin.getWebServer().registerUser(username, message, player.getName());
+            if (err != null) {
+                player.sendMessage("§c" + err);
+            } else {
+                player.sendMessage("§a注册成功！");
+                player.sendMessage("§7账户: §e" + username);
+                player.sendMessage("§7角色: §e普通用户");
+                player.sendMessage("§7已关联游戏ID: §e" + player.getName());
+                if (plugin.getWebServer().isRunning()) {
+                    player.sendMessage("§7访问: §ehttp://<服务器IP>:" + plugin.getWebServer().getPort());
+                }
+            }
+            return;
+        }
+
+        // Web 账户修改密码（/ht web changepwd 后聊天输入）
+        if (context.equals("web_changepwd")) {
+            if (message.length() < 4) {
+                player.sendMessage("§c密码至少4位，请重新输入:");
+                plugin.getChatInputHandler().expectInput(player, context);
+                return;
+            }
+            String err = plugin.getWebServer().changePasswordByMinecraft(player.getName(), message);
+            if (err != null) {
+                player.sendMessage("§c" + err);
+            } else {
+                player.sendMessage("§a密码修改成功！请使用新密码登录 Web 面板");
+            }
+            return;
+        }
+
+        // 房间入住密码验证（/ht checkin <房间ID> 后聊天输入）
+        if (context.startsWith("checkin_password:")) {
+            String roomId = context.substring("checkin_password:".length());
+            HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
+            if (room == null) {
+                player.sendMessage("§c房间不存在或已删除");
+                return;
+            }
+            if (!room.checkPassword(message)) {
+                player.sendMessage("§c密码错误");
+                return;
+            }
+            // 密码验证通过后触发自动迁移，保存房间
+            plugin.getRoomStorage().saveRoom(room);
+            plugin.log(player, "尝试入住房间: " + room.getName() + " (ID: " + roomId + ")");
+            plugin.getCheckinHandler().attemptCheckin(player, room);
             return;
         }
     }

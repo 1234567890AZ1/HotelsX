@@ -33,6 +33,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
 /**
@@ -44,6 +45,7 @@ public class RoomStorage {
     private final File dataFile;
     private final Map<String, HotelRoom> rooms;
     private final Map<String, RoomCollection> collections; // roomId -> room
+    private final ReentrantLock writeLock = new ReentrantLock();
 
     public RoomStorage(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -144,21 +146,30 @@ public class RoomStorage {
      * 保存单个房间（全量保存，简单可靠）
      */
     public void saveRoom(HotelRoom room) {
-        rooms.put(room.getId(), room);
-        saveAll();
+        writeLock.lock();
+        try {
+            rooms.put(room.getId(), room);
+            saveAll();
+        } finally { writeLock.unlock(); }
     }
 
     /**
      * 删除房间
      */
     public void removeRoom(String roomId) {
-        rooms.remove(roomId);
-        saveAll();
+        writeLock.lock();
+        try {
+            rooms.remove(roomId);
+            saveAll();
+        } finally { writeLock.unlock(); }
     }
 
     public void clearAllRooms() {
-        rooms.clear();
-        saveAll();
+        writeLock.lock();
+        try {
+            rooms.clear();
+            saveAll();
+        } finally { writeLock.unlock(); }
     }
 
     /**
@@ -243,13 +254,19 @@ public class RoomStorage {
     }
 
     public void saveCollection(RoomCollection col) {
-        collections.put(col.getId(), col);
-        saveAll();
+        writeLock.lock();
+        try {
+            collections.put(col.getId(), col);
+            saveAll();
+        } finally { writeLock.unlock(); }
     }
 
     public void removeCollection(String id) {
-        collections.remove(id);
-        saveAll();
+        writeLock.lock();
+        try {
+            collections.remove(id);
+            saveAll();
+        } finally { writeLock.unlock(); }
     }
 
     public int getCollectionCount() {

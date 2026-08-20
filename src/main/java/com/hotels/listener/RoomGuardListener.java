@@ -85,7 +85,7 @@ public class RoomGuardListener implements Listener {
                     room.getSpawnX() + 2, room.getSpawnY(), room.getSpawnZ() + 2,
                     room.getSpawnYaw(), room.getSpawnPitch()
             );
-            player.teleport(spawn);
+            com.hotels.util.SchedulerCompat.teleport(player, spawn);
             player.sendMessage("§c你没有权限进入该房间");
 
             plugin.debug(player, "玩家被拒绝进入房间: " + player.getName() + " 尝试进入 " + room.getName());
