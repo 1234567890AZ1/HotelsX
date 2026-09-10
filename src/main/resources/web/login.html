@@ -1,0 +1,52 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HotelsX - 登录</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden;
+background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 45%,#4c1d95 100%);}
+body::before{content:'';position:absolute;width:520px;height:520px;background:radial-gradient(circle,rgba(102,126,234,.35),transparent 70%);top:-160px;right:-120px;border-radius:50%;pointer-events:none;}
+body::after{content:'';position:absolute;width:420px;height:420px;background:radial-gradient(circle,rgba(167,139,250,.28),transparent 70%);bottom:-140px;left:-100px;border-radius:50%;pointer-events:none;}
+.wrap{position:relative;z-index:1;width:100%;max-width:400px;animation:up .5s ease;}
+@keyframes up{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+.box{background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-radius:20px;padding:40px 32px;box-shadow:0 25px 60px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25);}
+.brand{text-align:center;margin-bottom:28px;}
+.logo{width:64px;height:64px;margin:0 auto 14px;border-radius:18px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 24px rgba(102,126,234,.4);}
+.logo svg{width:34px;height:34px;fill:#fff;}
+.box h1{font-size:26px;font-weight:800;letter-spacing:1px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.box .sub{color:#6b7280;font-size:13px;margin-top:6px;}
+.fg{margin-bottom:18px;}
+.fg label{display:block;font-size:13px;font-weight:600;margin-bottom:7px;color:#374151;}
+.iwrap{position:relative;}
+.iwrap input{width:100%;padding:12px 14px 12px 42px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;background:#f9fafb;transition:all .2s;color:#1f2937;}
+.iwrap input:focus{outline:none;border-color:#667eea;background:#fff;box-shadow:0 0 0 3px rgba(102,126,234,.15);}
+.iwrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;fill:#9ca3af;transition:fill .2s;pointer-events:none;}
+.iwrap input:focus+svg{fill:#667eea;}
+.btn-login{width:100%;padding:13px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;letter-spacing:6px;cursor:pointer;margin-top:10px;box-shadow:0 8px 20px rgba(102,126,234,.35);transition:all .25s;}
+.btn-login:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(102,126,234,.45);filter:brightness(1.06);}
+.btn-login:active{transform:translateY(0);box-shadow:0 4px 12px rgba(102,126,234,.3);}
+.err{background:#fef2f2;color:#dc2626;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:16px;display:none;border:1px solid #fecaca;}
+.foot{text-align:center;margin-top:24px;font-size:12px;color:#9ca3af;letter-spacing:.5px;}
+@media(max-width:480px){
+.box{padding:30px 24px;border-radius:16px;}
+.box h1{font-size:22px;}
+.logo{width:56px;height:56px;border-radius:15px;}
+}
+</style></head><body>
+<div class="wrap"><div class="box">
+<div class="brand">
+<h1>HotelsX</h1><p class="sub">酒店管理系统 · 管理员登录</p></div>
+<div id="err" class="err"></div>
+<form id="lf">
+<div class="fg"><label for="lgUser">用户名</label><div class="iwrap"><input type="text" id="lgUser" name="username" required placeholder="请输入用户名"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div></div>
+<div class="fg"><label for="lgPass">密码</label><div class="iwrap"><input type="password" id="lgPass" name="password" required placeholder="请输入密码"><svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-3 0H9V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2z"/></svg></div></div>
+<button type="submit" class="btn-login">登 录</button></form>
+<div class="foot">HotelsX v1.4.0 · 安全登录</div>
+</div></div>
+<script>
+document.getElementById('lf').addEventListener('submit',async function(e){
+e.preventDefault();const el=document.getElementById('err');el.style.display='none';
+try{const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(new FormData(this))});
+if(r.ok){window.location.href='/';}else{const d=await r.json();el.textContent=d.error||'登录失败';el.style.display='block';}}
+catch(err){el.textContent='网络错误';el.style.display='block';}});
+</script></body></html>

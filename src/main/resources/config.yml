@@ -21,6 +21,10 @@ checkin:
   auto-teleport: true
   # 最大入住时长（秒），0 表示不限时
   max-stay-seconds: 0
+  # 入住成功后的欢迎效果
+  welcome-title: true      # 居中大标题"欢迎入住！"
+  welcome-actionbar: true  # 底部 ActionBar 提示
+  welcome-sound: true      # 播放升级音效
 
 # 经济系统设置
 economy:

@@ -30,6 +30,7 @@ import com.hotels.util.SchedulerCompat;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 
 import java.util.UUID;
@@ -144,6 +145,9 @@ public class CheckinHandler {
         player.sendMessage("§a成功入住房间 §e" + room.getName() + "§a！");
         player.sendMessage("§7输入 §e/ht checkout §7退房");
 
+        // 欢迎效果（标题 / ActionBar / 音效，可在 config.yml 关闭）
+        sendWelcomeEffects(player, room);
+
         // 检查时长限制
         int duration = room.getDurationMinutes();
         if (duration == -1) {
@@ -185,6 +189,29 @@ public class CheckinHandler {
         Player owner = Bukkit.getPlayer(room.getOwner());
         if (owner != null && owner.isOnline()) {
             owner.sendMessage("§e" + player.getName() + " §a已入住你的房间 §e" + room.getName());
+        }
+    }
+
+    /**
+     * 入住成功后的欢迎效果：居中大标题 + ActionBar + 升级音效。
+     * 各项均可在 config.yml 的 checkin 段独立开关。
+     */
+    private void sendWelcomeEffects(Player player, HotelRoom room) {
+        try {
+            if (plugin.getConfig().getBoolean("checkin.welcome-title", true)) {
+                player.sendTitle("§a§l欢迎入住！",
+                        "§e" + room.getName() + " §7| §f祝您入住愉快", 10, 60, 20);
+            }
+            if (plugin.getConfig().getBoolean("checkin.welcome-actionbar", true)) {
+                player.sendActionBar("§a已入住 §e" + room.getName()
+                        + " §7| §f/ht checkout §7退房  §f/ht tp §7回房间");
+            }
+            if (plugin.getConfig().getBoolean("checkin.welcome-sound", true)) {
+                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+            }
+        } catch (Exception e) {
+            // 个别服务端/版本不支持标题或音效时静默降级
+            plugin.getLogger().warning("播放入住欢迎效果失败: " + e.getMessage());
         }
     }
 

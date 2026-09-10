@@ -34,8 +34,10 @@ import com.hotels.listener.RoomProtectListener;
 import com.hotels.listener.SelectionListener;
 import com.hotels.model.HotelRoom;
 import com.hotels.model.RoomCollection;
+import com.hotels.preset.PresetManager;
 import com.hotels.selection.SelectionManager;
 import com.hotels.storage.EscrowStorage;
+import com.hotels.storage.PresetStorage;
 import com.hotels.storage.RatingStorage;
 import com.hotels.storage.RoomStorage;
 import com.hotels.storage.TransactionStorage;
@@ -56,6 +58,8 @@ public class HotelsPlugin extends JavaPlugin {
     private TransactionStorage transactionStorage;
     private RatingStorage ratingStorage;
     private EscrowStorage escrowStorage;
+    private PresetStorage presetStorage;
+    private PresetManager presetManager;
     private SelectionManager selectionManager;
     private EconomyManager economyManager;
     private CheckinHandler checkinHandler;
@@ -81,6 +85,8 @@ public class HotelsPlugin extends JavaPlugin {
         this.transactionStorage = new TransactionStorage(this);
         this.ratingStorage = new RatingStorage(this);
         this.escrowStorage = new EscrowStorage(this);
+        this.presetStorage = new PresetStorage(this);
+        this.presetManager = new PresetManager(this);
         this.selectionManager = new SelectionManager();
         this.economyManager = new EconomyManager(this);
         this.checkinHandler = new CheckinHandler(this);
@@ -92,6 +98,7 @@ public class HotelsPlugin extends JavaPlugin {
         transactionStorage.loadAll();
         ratingStorage.loadAll();
         escrowStorage.loadAll();
+        presetStorage.loadAll();
 
         // 检查超时入住（重启后恢复定时任务）
         checkOverdueCheckins();
@@ -162,6 +169,8 @@ public class HotelsPlugin extends JavaPlugin {
     public TransactionStorage getTransactionStorage() { return transactionStorage; }
     public RatingStorage getRatingStorage() { return ratingStorage; }
     public EscrowStorage getEscrowStorage() { return escrowStorage; }
+    public PresetStorage getPresetStorage() { return presetStorage; }
+    public PresetManager getPresetManager() { return presetManager; }
     public SelectionManager getSelectionManager() { return selectionManager; }
     public EconomyManager getEconomyManager() { return economyManager; }
     public CheckinHandler getCheckinHandler() { return checkinHandler; }

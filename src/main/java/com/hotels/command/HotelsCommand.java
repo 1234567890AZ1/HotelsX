@@ -187,6 +187,10 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
                 handleClaim(player);
                 break;
 
+            case "preset":
+                handlePreset(player, args);
+                break;
+
             default:
                 player.sendMessage("§c未知子命令，输入 /ht 查看帮助");
                 break;
@@ -901,6 +905,206 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    /**
+     * /ht preset - 房间装修预设管理
+     * 子命令: list / save <名称> / apply <名称> [房间ID] / delete <名称>
+     * 仅当房间尺寸与预设完全一致时才能应用
+     */
+    private void handlePreset(Player player, String[] args) {
+        boolean admin = player.hasPermission("hotels.admin") || player.isOp();
+
+        if (args.length < 2) {
+            sendPresetHelp(player, admin);
+            return;
+        }
+
+        switch (args[1].toLowerCase()) {
+            case "list": {
+                List<com.hotels.model.RoomPreset> presets = plugin.getPresetStorage().getAllPresets();
+                if (presets.isEmpty()) {
+                    player.sendMessage("§7当前没有装修预设");
+                    return;
+                }
+                player.sendMessage("§6===== 装修预设列表 (" + presets.size() + ") =====");
+                for (com.hotels.model.RoomPreset p : presets) {
+                    player.sendMessage("§e" + p.getName()
+                            + " §7尺寸: §f" + p.getSizeDisplay()
+                            + (p.getRotation() > 0 ? " §7旋转: §f" + p.getRotation() + "°" : "")
+                            + " §7世界: §f" + p.getWorld());
+                }
+                player.sendMessage("§8应用: /ht preset apply <名称> [角度0/90/180/270] [房间ID]");
+                break;
+            }
+
+            case "save": {
+                if (!admin) {
+                    player.sendMessage("§c保存预设需要管理员权限 (hotels.admin)");
+                    return;
+                }
+                if (args.length < 3) {
+                    player.sendMessage("§c用法: /ht preset save <预设名称>");
+                    return;
+                }
+                String name = args[2];
+                if (!name.matches("[\\w\\u4e00-\\u9fa5-]{1,24}")) {
+                    player.sendMessage("§c预设名称仅限 1-24 位中文/字母/数字/下划线/横线");
+                    return;
+                }
+                com.hotels.model.HotelRoom room = plugin.getRoomStorage().getRoomAtLocation(player.getLocation());
+                if (room == null) {
+                    player.sendMessage("§c请站在要保存为预设的房间内部");
+                    return;
+                }
+                if (!room.getOwner().equals(player.getUniqueId()) && !admin) {
+                    player.sendMessage("§c你不是这个房间的房主");
+                    return;
+                }
+                plugin.getPresetManager().savePreset(player, room, name);
+                break;
+            }
+
+            case "apply": {
+                if (args.length < 3) {
+                    player.sendMessage("§c用法: /ht preset apply <预设名称> [旋转角度0/90/180/270] [房间ID]");
+                    return;
+                }
+                String presetName = args[2];
+                com.hotels.model.RoomPreset preset = plugin.getPresetStorage().getPreset(presetName);
+                if (preset == null) {
+                    player.sendMessage("§c预设 §e" + presetName + " §c不存在");
+                    return;
+                }
+
+                // 解析可选参数：旋转角度或房间ID
+                int rotation = preset.getRotation(); // 默认使用预设保存时的旋转
+                String roomIdArg = null;
+
+                if (args.length >= 4) {
+                    // 尝试将 args[3] 解析为旋转角度
+                    boolean isRotation = false;
+                    try {
+                        int rot = Integer.parseInt(args[3]);
+                        if (rot % 90 == 0 && rot >= 0 && rot <= 270) {
+                            rotation = rot;
+                            isRotation = true;
+                        }
+                    } catch (NumberFormatException ignored) {}
+
+                    if (isRotation) {
+                        // args[4] 是房间ID（如果有）
+                        if (args.length >= 5) {
+                            roomIdArg = args[4];
+                        }
+                    } else {
+                        // args[3] 直接是房间ID
+                        roomIdArg = args[3];
+                    }
+                }
+
+                // 使用副本应用旋转，避免修改存储中的原预设
+                preset = preset.copyWithRotation(rotation);
+
+                // 支持 confirm 参数：跳过"房间已有装修"的冲突提示，直接覆盖
+                boolean confirm = false;
+                for (int i = 3; i < args.length; i++) {
+                    if (args[i].equalsIgnoreCase("confirm")) {
+                        confirm = true;
+                        break;
+                    }
+                }
+
+                com.hotels.model.HotelRoom room;
+                if (roomIdArg != null) {
+                    room = plugin.getRoomStorage().getRoom(roomIdArg);
+                    if (room == null) {
+                        player.sendMessage("§c房间不存在");
+                        return;
+                    }
+                    if (!room.getOwner().equals(player.getUniqueId()) && !admin) {
+                        player.sendMessage("§c你不是这个房间的房主");
+                        return;
+                    }
+                } else {
+                    room = plugin.getRoomStorage().getRoomAtLocation(player.getLocation());
+                    if (room == null) {
+                        player.sendMessage("§c请站在房间内部，或指定房间ID: /ht preset apply <名称> [旋转] <房间ID>");
+                        return;
+                    }
+                    if (!room.getOwner().equals(player.getUniqueId()) && !admin) {
+                        player.sendMessage("§c你不是这个房间的房主");
+                        return;
+                    }
+                }
+                plugin.getPresetManager().applyPreset(player, room, preset, confirm);
+                break;
+            }
+
+            case "undo": {
+                // 回滚最近一次应用到房间的装修预设
+                com.hotels.model.HotelRoom room;
+                if (args.length >= 3) {
+                    room = plugin.getRoomStorage().getRoom(args[2]);
+                    if (room == null) {
+                        player.sendMessage("§c房间不存在");
+                        return;
+                    }
+                    if (!room.getOwner().equals(player.getUniqueId()) && !admin) {
+                        player.sendMessage("§c你不是这个房间的房主");
+                        return;
+                    }
+                } else {
+                    room = plugin.getRoomStorage().getRoomAtLocation(player.getLocation());
+                    if (room == null) {
+                        player.sendMessage("§c请站在房间内部，或指定房间ID: /ht preset undo <房间ID>");
+                        return;
+                    }
+                    if (!room.getOwner().equals(player.getUniqueId()) && !admin) {
+                        player.sendMessage("§c你不是这个房间的房主");
+                        return;
+                    }
+                }
+                plugin.getPresetManager().undoPreset(player, room);
+                break;
+            }
+
+            case "delete": {
+                if (!admin) {
+                    player.sendMessage("§c删除预设需要管理员权限 (hotels.admin)");
+                    return;
+                }
+                if (args.length < 3) {
+                    player.sendMessage("§c用法: /ht preset delete <预设名称>");
+                    return;
+                }
+                if (plugin.getPresetStorage().deletePreset(args[2])) {
+                    plugin.log(player, "删除装修预设: " + args[2]);
+                    player.sendMessage("§c装修预设 §e" + args[2] + " §c已删除");
+                } else {
+                    player.sendMessage("§c预设 §e" + args[2] + " §c不存在");
+                }
+                break;
+            }
+
+            default:
+                sendPresetHelp(player, admin);
+                break;
+        }
+    }
+
+    private void sendPresetHelp(Player player, boolean admin) {
+        player.sendMessage("§6===== 装修预设系统 =====");
+        player.sendMessage("§7说明: 将房间装修保存为模板，支持旋转后应用到相同尺寸的房间");
+        if (admin) {
+            player.sendMessage("§8/ht preset save <名称>      §7- 将当前所在房间保存为预设");
+            player.sendMessage("§8/ht preset delete <名称>   §7- 删除预设");
+        }
+        player.sendMessage("§8/ht preset list                          §7- 查看全部预设");
+        player.sendMessage("§8/ht preset apply <名称> [角度0/90/180/270] [房间ID] [confirm] §7- 应用预设到房间");
+        player.sendMessage("§8/ht preset undo [房间ID]                 §7- 回滚最近一次应用，恢复原装修");
+        player.sendMessage("§7提示: 角度不填则使用保存时的旋转，仅围绕 Y 轴顺时针旋转");
+        player.sendMessage("§7提示: 房间已有装修时需加 §econfirm §7参数确认覆盖");
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!(sender instanceof Player)) return new ArrayList<>();
@@ -916,6 +1120,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
                 completions.add("admin");
                 completions.add("debug");
                 completions.add("web");
+                completions.add("preset");
             }
             return completions.stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase()))
@@ -945,6 +1150,28 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
 
                 case "web":
                     return Arrays.asList("start", "stop", "restart", "status", "register", "changepwd", "password", "me", "info", "help").stream()
+                            .filter(s -> s.startsWith(args[1].toLowerCase()))
+                            .collect(Collectors.toList());
+
+                case "preset":
+                    if (args[1].equalsIgnoreCase("apply")) {
+                        // 补全预设名称或旋转角度
+                        List<String> completions = new ArrayList<>(Arrays.asList("0", "90", "180", "270", "confirm"));
+                        completions.addAll(plugin.getPresetStorage().getAllPresets().stream()
+                                .map(com.hotels.model.RoomPreset::getName)
+                                .collect(Collectors.toList()));
+                        return completions.stream()
+                                .filter(s -> s.startsWith(args[2].toLowerCase()))
+                                .collect(Collectors.toList());
+                    }
+                    if (args[1].equalsIgnoreCase("undo")) {
+                        // 补全房间 ID
+                        return plugin.getRoomStorage().getAllRooms().stream()
+                                .map(HotelRoom::getId)
+                                .filter(id -> id.startsWith(args[2]))
+                                .collect(Collectors.toList());
+                    }
+                    return Arrays.asList("list", "save", "apply", "undo", "delete").stream()
                             .filter(s -> s.startsWith(args[1].toLowerCase()))
                             .collect(Collectors.toList());
 
