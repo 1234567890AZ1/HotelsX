@@ -3,6 +3,18 @@
 <title>HotelsX Web 面板</title>
 <meta http-equiv="refresh" content="60">
 %s
+<script>
+const CSRF_TOKEN='__CSRF_TOKEN__';
+const __origFetch=window.fetch;
+window.fetch=function(url,opts){
+opts=opts||{};
+if(opts.method&&opts.method.toUpperCase()==='POST'){
+opts.headers=opts.headers||{};
+if(!opts.headers['X-CSRF-Token']){opts.headers['X-CSRF-Token']=CSRF_TOKEN;}
+}
+return __origFetch.apply(window,arguments);
+};
+</script>
 </head><body>
 <div class="sidebar">
 <div class="logo">HotelsX v1.4.2</div>

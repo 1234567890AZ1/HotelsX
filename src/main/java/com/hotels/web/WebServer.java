@@ -78,12 +78,14 @@ public class WebServer {
         final String username;
         final String role;
         final String minecraftName;
+        final String csrfToken; // 防 CSRF 随机令牌，登录时生成，变更类 API 需携带
         final long createdAt;
         long lastAccess;
         Session(String username, String role, String minecraftName) {
             this.username = username;
             this.role = role;
             this.minecraftName = minecraftName;
+            this.csrfToken = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
             this.createdAt = System.currentTimeMillis();
             this.lastAccess = createdAt;
         }
@@ -546,6 +548,23 @@ public class WebServer {
     }
 
     /**
+     * CSRF 防护：校验请求头 X-CSRF-Token 是否与会话绑定的令牌一致
+     * 所有变更类（POST）API 在权限校验后追加此检查
+     */
+    private boolean requireCsrf(HttpExchange exchange) throws IOException {
+        Session s = getSession(exchange);
+        String token = exchange.getRequestHeaders().getFirst("X-CSRF-Token");
+        if (s != null && s.csrfToken != null && token != null
+                && java.security.MessageDigest.isEqual(
+                        s.csrfToken.getBytes(StandardCharsets.UTF_8),
+                        token.getBytes(StandardCharsets.UTF_8))) {
+            return true;
+        }
+        WebHttp.sendJson(exchange, 403, "{\"error\":\"安全校验失败，请刷新页面后重试\"}");
+        return false;
+    }
+
+    /**
      * 检查当前会话用户是否有权管理指定房间
      * superadmin: 可管理所有房间
      * admin: 可编辑（修改）所有房间，但不能删除
@@ -902,6 +921,7 @@ public class WebServer {
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
                 WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
             }
+            if (!requireCsrf(exchange)) return;
             Map<String, String> form = WebHttp.parseForm(WebHttp.readBody(exchange));
             String action = form.getOrDefault("action", "");
             String roomIdsStr = form.getOrDefault("roomIds", "");
@@ -995,6 +1015,7 @@ public class WebServer {
             if (roomId.isEmpty()) { WebHttp.sendJson(exchange, 400, "{\"error\":\"缺少房间ID\"}"); return; }
             HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
             if (room == null) { WebHttp.sendJson(exchange, 404, "{\"error\":\"房间不存在\"}"); return; }
+            if (!requireCsrf(exchange)) return;
             if (!canDeleteRoom(session, room)) { WebHttp.sendJson(exchange, 403, "{\"error\":\"只有超级管理员可以删除房间\"}"); return; }
             plugin.getRoomStorage().removeRoom(roomId);
             plugin.getRoomStorage().saveAll();
@@ -1018,6 +1039,7 @@ public class WebServer {
             HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
             if (room == null) { WebHttp.sendJson(exchange, 404, "{\"error\":\"房间不存在\"}"); return; }
             if (!canManageRoom(session, room)) { WebHttp.sendJson(exchange, 403, "{\"error\":\"无权操作此房间\"}"); return; }
+            if (!requireCsrf(exchange)) return;
             if (form.containsKey("name")) room.setName(form.get("name"));
             if (form.containsKey("price")) {
                 try { room.setPrice(Double.parseDouble(form.get("price"))); } catch (NumberFormatException ignored) {}
@@ -1076,6 +1098,7 @@ public class WebServer {
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
                 WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
             }
+            if (!requireCsrf(exchange)) return;
             Map<String, String> form = WebHttp.parseForm(WebHttp.readBody(exchange));
             String u = form.getOrDefault("username", "").trim();
             String p = form.getOrDefault("password", "");
@@ -1186,6 +1209,7 @@ public class WebServer {
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
                 WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
             }
+            if (!requireCsrf(exchange)) return;
             Map<String, String> form = WebHttp.parseForm(WebHttp.readBody(exchange));
             String type = form.getOrDefault("type", "chat").trim();   // chat / title / actionbar
             String message = form.getOrDefault("message", "").trim();
@@ -1428,6 +1452,7 @@ public class WebServer {
             if (!requireAuth(exchange)) return;
             Session session = getSession(exchange);
             if (session == null) return;
+            if (!requireCsrf(exchange)) return;
 
             if (!plugin.getConfig().getBoolean("economy.escrow-mode", false)) {
                 Map<String, Object> resp = new LinkedHashMap<>();
@@ -1847,6 +1872,6 @@ public class WebServer {
                         adminSection,
                         consoleSection,
                         broadcastSection
-                );
+                ).replace("__CSRF_TOKEN__", session.csrfToken);
     }
 }
