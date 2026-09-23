@@ -32,6 +32,21 @@ economy:
   # 关闭则入住时收益实时到账到房主钱包（默认）
   escrow-mode: false
 
+# 店面系统配置（Web 面板商店系统，无游戏内交互）
+shop:
+  # 是否启用店面系统
+  enabled: true
+  # 单件商品价格上限
+  max-price: 1000000.0
+  # 默认补货模式：AUTO（自动从容器补货/收货）/ FIXED（固定库存）
+  default-mode: AUTO
+  # 每个玩家最多店面数
+  max-shops-per-player: 5
+  # 店面是否必须挂在房间内
+  allow-in-rooms: true
+  # 交易消息是否显示（ActionBar 提示）
+  transaction-messages: true
+
 # 房间标签预设（管理员配置，房主只能从这里选）
 # 一个房间最多 3 个标签
 room-tags:

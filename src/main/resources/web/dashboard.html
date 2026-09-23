@@ -1,8 +1,10 @@
 <!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HotelsX Web 面板</title>
+<title>HotelsX · 管理面板</title>
 <meta http-equiv="refresh" content="60">
-%s
+<meta name="theme-color" content="#121211">
+<meta name="color-scheme" content="light">
+<!--HX_CSS-->
 <script>
 const CSRF_TOKEN='__CSRF_TOKEN__';
 const __origFetch=window.fetch;
@@ -15,9 +17,13 @@ if(!opts.headers['X-CSRF-Token']){opts.headers['X-CSRF-Token']=CSRF_TOKEN;}
 return __origFetch.apply(window,arguments);
 };
 </script>
+<style>
+/* 标题层级锚定（与白场 WHITEFIELD 设计 token 一致） */
+h1{font-size:30px;line-height:1.25;letter-spacing:-.02em;}h2{font-size:20px;line-height:1.3;letter-spacing:-.015em;}h3{font-size:16px;line-height:1.4;}h4{font-size:13px;line-height:1.45;}
+</style>
 </head><body>
 <div class="sidebar">
-<div class="logo">HotelsX v1.4.2</div>
+<div class="logo"><span class="mark">HotelsX</span><span class="ver">v1.4.3</span></div>
 <div class="menu">
 <div class="st">监控</div>
 <a href="#overview"><svg viewBox="0 0 24 24"><path d="M4 13h6c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1zm10 8h6c.55 0 1-.45 1-1v-4c0-.55-.45-1-1-1h-6c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1zM4 21h6c.55 0 1-.45 1-1v-4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1zm10-8h6c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1h-6c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1z"/></svg>概览</a>
@@ -30,103 +36,105 @@ return __origFetch.apply(window,arguments);
 <a href="#transactions"><svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>经济流水</a>
 <a href="#ratings"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>评分评价</a>
 <a href="#escrow"><svg viewBox="0 0 24 24"><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/></svg>收益提现</a>
-%s
+<a href="#shops"><svg viewBox="0 0 24 24"><path d="M19 6h-2c0-2.76-2.24-5-5-5S7 3.24 7 6H5c-1.1 0-2 .9-2 2v13c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V8c0-1.1-.9-2-2-2zm-9-1c0-1.1.9-2 2-2s2 .9 2 2h-4zm9 16H5v-9h2v2h2v-2h6v2h2v-2h2v9z"/></svg>店铺管理</a>
+<!--HX_NAV-->
 <div class="st">账户</div>
 <a href="#profile"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>修改密码</a>
 </div>
 <div class="user">
-<div class="name">%s</div>
-%s
-<a href="/api/logout" style="color:#f87171;text-decoration:none;font-size:12px;display:flex;align-items:center;gap:6px;margin-top:8px;"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#f87171;"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>退出登录</a>
+<div class="name"><!--HX_USERNAME--></div>
+<!--HX_ROLE_TAG-->
+<a href="/api/logout" class="logout"><svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>退出登录</a>
 </div></div>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 <div class="main">
 <div class="topbar"><button class="mobile-toggle" onclick="toggleSidebar()">&#9776;</button><h2>HotelsX 管理面板</h2>
-<div class="actions"><span class="refresh-note" id="refreshNote">服务器状态实时推送 · 页面 60 秒刷新</span>
-<button class="btn btn-secondary btn-sm" id="themeBtn" onclick="toggleTheme()">夜间模式</button>
-<button class="btn btn-secondary btn-sm" onclick="location.reload()">刷新</button></div></div>
+<div class="actions"><span class="refresh-note" id="refreshNote">实时推送 · 60 秒自动刷新</span>
+<button class="btn btn-secondary btn-sm" onclick="reloadKeep()">刷新</button></div></div>
 
 <div id="overview" class="page-section">
 <div class="stats">
 <div class="card cyan"><div class="icon"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></div><div class="label">在线玩家</div>
-<div class="value" id="statOnline">%d / %d</div><div class="sub">当前在线人数</div>
-<div class="progress-bar"><div class="progress-fill" id="statOnlineBar" style="width:%.0f%%"></div></div></div>
+<div class="value" id="statOnline"><!--HX_ONLINE_SUM--></div><div class="sub">当前在线人数</div>
+<div class="progress-bar"><div class="progress-fill" id="statOnlineBar" style="width:<!--HX_ONLINE_PCT-->%"></div></div></div>
 <div class="card blue"><div class="icon"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM8 20H4v-4h4v4zm0-6H4v-4h4v4zm0-6H4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4z"/></svg></div><div class="label">服务器 TPS</div>
-<div class="value" id="statTps">%.2f</div><div class="sub">Tick Per Second</div>
-<div class="progress-bar"><div class="progress-fill %s" id="statTpsBar" style="width:%.0f%%"></div></div></div>
+<div class="value" id="statTps"><!--HX_TPS--></div><div class="sub">Tick Per Second</div>
+<div class="progress-bar"><div class="progress-fill <!--HX_TPS_COLOR-->" id="statTpsBar" style="width:<!--HX_TPS_PCT-->%"></div></div></div>
 <div class="card purple"><div class="icon"><svg viewBox="0 0 24 24"><path d="M9 3v4c0 .55-.45 1-1 1H4v10h16V8h-4c-.55 0-1-.45-1-1V3H9zm-1-2h8v6h6v14H2V7h6V1z"/></svg></div><div class="label">内存使用</div>
-<div class="value" id="statMem">%d / %d MB</div><div class="sub">使用率 %d%%</div>
-<div class="progress-bar"><div class="progress-fill %s" id="statMemBar" style="width:%d%%"></div></div></div>
+<div class="value" id="statMem"><!--HX_USED_MEM--> / <!--HX_MAX_MEM--> MB</div><div class="sub">使用率 <!--HX_MEM_PCT-->%</div>
+<div class="progress-bar"><div class="progress-fill <!--HX_MEM_COLOR-->" id="statMemBar" style="width:<!--HX_MEM_PCT2-->%"></div></div></div>
 <div class="card green"><div class="icon"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg></div><div class="label">运行时间</div>
-<div class="value" id="statUptime" style="font-size:18px;">%s</div><div class="sub">自启动以来</div></div>
+<div class="value" id="statUptime" style="font-size:18px;"><!--HX_UPTIME--></div><div class="sub">自启动以来</div></div>
 </div>
 
 <div class="stats">
-<div class="card green"><div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="label">可入住</div><div class="value">%d</div></div>
-<div class="card orange"><div class="icon"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg></div><div class="label">已入住</div><div class="value">%d</div></div>
-<div class="card gray"><div class="icon"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></div><div class="label">已锁定</div><div class="value">%d</div></div>
-<div class="card purple"><div class="icon"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></div><div class="label">维护中</div><div class="value">%d</div></div>
-<div class="card blue"><div class="icon"><svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div><div class="label">合集数量</div><div class="value">%d</div></div>
+<div class="card green"><div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="label">可入住</div><div class="value"><!--HX_AVAIL--></div></div>
+<div class="card orange"><div class="icon"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg></div><div class="label">已入住</div><div class="value"><!--HX_OCC--></div></div>
+<div class="card gray"><div class="icon"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></div><div class="label">已锁定</div><div class="value"><!--HX_LOCKED--></div></div>
+<div class="card purple"><div class="icon"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></div><div class="label">维护中</div><div class="value"><!--HX_MAINT--></div></div>
+<div class="card blue"><div class="icon"><svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div><div class="label">合集数量</div><div class="value"><!--HX_COL_COUNT--></div></div>
+</div>
 </div>
 
 <div id="charts" class="page-section">
 <div class="section">
 <div class="section-title">房间统计图表</div>
-<div id="chartsContent" style="text-align:center;color:#999;padding:40px;">加载中...</div>
+<div id="chartsContent" style="text-align:center;color:var(--c-text-faint);padding:40px;">加载中...</div>
 </div></div>
 
 <div id="report" class="page-section">
 <div class="section">
 <div class="section-title">运营报表</div>
-<div id="reportContent" style="text-align:center;color:#999;padding:40px;">加载中...</div>
+<div id="reportContent" style="text-align:center;color:var(--c-text-faint);padding:40px;">加载中...</div>
 </div></div>
 
 <div id="server" class="page-section">
 <div class="section"><div class="section-title">服务器信息</div>
 <table>
-<tr><th>服务器版本</th><td>%s</td></tr>
-<tr><th>Minecraft 版本</th><td>%s</td></tr>
-<tr><th>服务器 TPS</th><td>%.2f</td></tr>
-<tr><th>在线玩家</th><td>%d / %d</td></tr>
-<tr><th>内存使用</th><td>%d MB / %d MB (%d%%)</td></tr>
-<tr><th>运行时间</th><td>%s</td></tr>
-<tr><th>已加载插件数</th><td>%d</td></tr>
+<tr><th>服务器版本</th><td><!--HX_SRV_VER--></td></tr>
+<tr><th>Minecraft 版本</th><td><!--HX_MC_VER--></td></tr>
+<tr><th>服务器 TPS</th><td><!--HX_TPS2--></td></tr>
+<tr><th>在线玩家</th><td><!--HX_ONLINE2--></td></tr>
+<tr><th>内存使用</th><td><!--HX_MEM2--></td></tr>
+<tr><th>运行时间</th><td><!--HX_UPTIME2--></td></tr>
+<tr><th>已加载插件数</th><td><!--HX_PLUGINS--></td></tr>
 </table></div></div>
 
 <div id="rooms" class="page-section">
 <div class="section">
-<div class="section-title">房间列表 <span class="badge">%d 个房间</span>
+<div class="section-title">房间列表 <span class="badge"><!--HX_ROOM_COUNT--> 个房间</span>
 <label for="roomSearch" style="display:none;">房间搜索</label>
-<input type="text" id="roomSearch" aria-label="搜索房间名ID房主" placeholder="搜索房间名/ID/房主..." onkeyup="filterRooms()" style="padding:6px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;width:100%%;max-width:240px;">
+<input type="text" id="roomSearch" aria-label="搜索房间名ID房主" placeholder="搜索房间名/ID/房主..." onkeyup="filterRooms()">
 </div>
-<div id="batchToolbar" style="display:none;margin-bottom:12px;padding:10px 14px;background:#f0f4ff;border-radius:8px;gap:8px;flex-wrap:wrap;align-items:center;">
-<span style="font-size:13px;color:#333;font-weight:600;" id="batchSelectedText">已选 0 个</span>
+<div id="batchToolbar" style="display:none;gap:8px;flex-wrap:wrap;align-items:center;">
+<span style="font-size:11px;font-family:var(--f-mono);letter-spacing:.06em;color:var(--c-text);font-weight:500;" id="batchSelectedText">已选 0 个</span>
 <button class="btn btn-secondary btn-sm" onclick="batchAction('lock')">批量上锁</button>
 <button class="btn btn-secondary btn-sm" onclick="batchAction('unlock')">批量解锁</button>
-<button class="btn btn-secondary btn-sm" onclick="batchSetPrice()">批量改价</button>
-<button class="btn btn-secondary btn-sm" onclick="batchSetStatus()">批量改状态</button>
+<button class="btn btn-secondary btn-sm" onclick="openBatchModal('price')">批量改价</button>
+<button class="btn btn-secondary btn-sm" onclick="openBatchModal('status')">批量改状态</button>
 <button class="btn btn-danger btn-sm" onclick="batchAction('delete')">批量删除</button>
 </div>
 <table><thead><tr><th style="width:36px;"><input type="checkbox" id="selectAll" aria-label="全选所有房间" onchange="toggleSelectAll(this)"></th><th>ID</th><th>名称</th><th>房主</th><th>状态</th><th>价格</th><th>当前住客</th><th>上锁</th><th>操作</th></tr></thead>
-<tbody id="roomTbody">%s</tbody></table>
+<tbody id="roomTbody"><!--HX_ROOMS_BODY--></tbody></table>
 <div id="roomPager" style="margin-top:12px;display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-wrap:wrap;"></div>
 </div></div>
 
 <div id="collections" class="page-section">
-<div class="section"><div class="section-title">合集列表 <span class="badge">%d 个合集</span></div>
+<div class="section"><div class="section-title">合集列表 <span class="badge"><!--HX_COL_COUNT2--> 个合集</span></div>
 <table><thead><tr><th>ID</th><th>名称</th><th>创建者</th><th>房间数</th></tr></thead>
-<tbody>%s</tbody></table></div></div>
+<tbody><!--HX_COLS_BODY--></tbody></table></div></div>
 
-%s
-%s
-%s
-%s
-%s
-%s
+<!--HX_SECTION_TRANSACTIONS-->
+<!--HX_SECTION_RATINGS-->
+<!--HX_SECTION_ESCROW-->
+<!--HX_SECTION_SHOPS-->
+<!--HX_SECTION_ADMINS-->
+<!--HX_SECTION_CONSOLE-->
+<!--HX_SECTION_BROADCAST-->
 
 <div id="profile" class="page-section">
 <div class="section"><div class="section-title">账户设置</div>
-<p style="margin-bottom:14px;color:#6b7280;">修改您的登录密码</p>
+<p style="margin-bottom:14px;color:var(--c-text-dim);">修改您的登录密码</p>
 <div class="inline-form">
 <div><label for="oldPwd">原密码</label>
 <input type="password" id="oldPwd" placeholder="原密码"></div>
@@ -167,12 +175,66 @@ return __origFetch.apply(window,arguments);
 <button class="btn btn-secondary" onclick="closeM('addAdminModal')">取消</button>
 <button class="btn btn-primary" onclick="addAdmin()">添加</button></div></div></div>
 
-<div id="toast" class="toast"></div>
+	<div id="shopEditModal" class="modal-overlay"><div class="modal">
+<h3>编辑店铺</h3>
+<input type="hidden" id="esId">
+<div class="form-group"><label for="esName">店铺名</label><input type="text" id="esName"></div>
+<div class="form-group"><label for="esMaterial">商品（Material）</label><input type="text" id="esMaterial"></div>
+<div class="form-group"><label for="esPrice">单价</label><input type="number" step="0.01" min="0.01" id="esPrice"></div>
+<div class="form-group"><label for="esMode">补货模式</label>
+<select id="esMode" onchange="esModeChanged()"><option value="AUTO">AUTO（容器实时库存）</option><option value="FIXED">FIXED（固定库存）</option></select></div>
+<div class="form-group" id="esStockWrap" style="display:none;"><label for="esStock">当前固定库存</label><input type="number" min="0" id="esStock"></div>
+<div class="modal-actions">
+<button class="btn btn-secondary" onclick="closeM('shopEditModal')">取消</button>
+<button class="btn btn-primary" onclick="saveShopEdit()">保存</button></div></div></div>
+
+	<div id="batchModal" class="modal-overlay"><div class="modal">
+	<h3 id="batchModalTitle">批量操作</h3>
+	<div id="batchModalBody"></div>
+	<div class="modal-actions"><button class="btn btn-secondary" onclick="closeM('batchModal')">取消</button><button class="btn btn-primary" onclick="confirmBatch()">确认执行</button></div></div></div>
+	<div id="consoleCfmModal" class="modal-overlay"><div class="modal">
+	<h3>高危运维命令确认</h3>
+	<div id="ccCmdDisplay" style="padding:10px 14px;border-radius:8px;background:var(--c-amber-bg);color:var(--c-amber-strong);font-family:var(--f-mono);font-size:13px;margin-bottom:14px;"></div>
+	<div class="form-group"><label for="ccCmdInput">为避免误操作，请再次输入上方命令</label>
+	<input type="text" id="ccCmdInput" placeholder="再次输入要执行的命令" autocomplete="off"></div>
+	<div class="modal-actions"><button class="btn btn-secondary" onclick="closeM('consoleCfmModal')">取消</button><button class="btn btn-danger" onclick="confirmConsoleExec()">确认执行</button></div></div></div>
+	<div id="buyModal" class="modal-overlay"><div class="modal">
+	<h3 id="buyModalTitle">购买商品</h3>
+	<div class="form-group"><label for="buyNum">购买数量（≥1）</label><input type="number" id="buyNum" min="1" value="1" placeholder="输入数量"></div>
+	<div class="modal-actions"><button class="btn btn-secondary" onclick="closeM('buyModal')">取消</button><button class="btn btn-primary" onclick="confirmBuy()">确认购买</button></div></div></div>
+	<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
-function applyTheme(dark){document.body.classList.toggle('dark',dark);document.getElementById('themeBtn').textContent=dark?'白天模式':'夜间模式';try{localStorage.setItem('hotelsx_theme',dark?'dark':'light');}catch(e){}}
-function toggleTheme(){applyTheme(!document.body.classList.contains('dark'));}
-try{if(localStorage.getItem('hotelsx_theme')==='dark')applyTheme(true);}catch(e){}
+// ===== 导航：所有分区平铺可见，滚轮可连续浏览；侧栏做锚点跳转 + 当前位置高亮 =====
+const SECTION_IDS=Array.from(document.querySelectorAll('.page-section')).map(s=>s.id);
+function highlightNav(){
+let cur=SECTION_IDS[0];
+for(const id of SECTION_IDS){
+const el=document.getElementById(id);if(!el)continue;
+if(el.getBoundingClientRect().top<=110)cur=id;
+}
+document.querySelectorAll('.sidebar .menu a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+cur));
+}
+document.querySelectorAll('.sidebar .menu a').forEach(a=>{
+a.addEventListener('click',function(){
+if(window.innerWidth<=768){const s=document.querySelector('.sidebar');if(s&&s.classList.contains('open'))toggleSidebar();}
+});
+});
+window.addEventListener('scroll',highlightNav,{passive:true});
+// ===== 视图状态保持：刷新/操作后保留搜索词、页码与滚动位置（P1 去掉全站裸刷新丢上下文） =====
+function saveViewState(){
+try{const q=document.getElementById('roomSearch');const qv=q?q.value:'';
+sessionStorage.setItem('hx_keep',JSON.stringify({q:qv,p:roomPage||1,s:window.scrollY||0}));}catch(e){}}
+function restoreViewState(){
+try{const raw=sessionStorage.getItem('hx_keep');if(!raw)return;
+sessionStorage.removeItem('hx_keep');
+const st=JSON.parse(raw);
+if(st.q){const q=document.getElementById('roomSearch');if(q)q.value=st.q;}
+if(st.p)roomPage=st.p;
+if(st.s)window.scrollTo(0,st.s);
+filterRooms();}catch(e){}}
+function reloadKeep(){saveViewState();location.reload();}
+if(document.getElementById('roomTbody'))setTimeout(restoreViewState,0);
 function toast(msg,t){const el=document.getElementById('toast');el.textContent=msg;el.className='toast toast-'+(t||'info')+' show';setTimeout(()=>el.classList.remove('show'),3000);}
 function closeM(id){document.getElementById(id).classList.remove('show');}
 function toggleSidebar(){const s=document.querySelector('.sidebar');const o=document.getElementById('sidebarOverlay');s.classList.toggle('open');o.classList.toggle('show');}
@@ -191,18 +253,18 @@ const j=await r.json();if(j.success){toast('房间已更新','success');closeM('
 catch(err){toast('网络错误','error');}}
 async function delRoom(id){if(!confirm('确定删除此房间？'))return;
 try{const r=await fetch('/api/room/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'roomId='+encodeURIComponent(id)});
-const j=await r.json();if(j.success){toast('房间已删除','success');setTimeout(()=>location.reload(),500);}else toast(j.error||'删除失败','error');}
+const j=await r.json();if(j.success){toast('房间已删除','success');setTimeout(reloadKeep,500);}else toast(j.error||'删除失败','error');}
 catch(err){toast('网络错误','error');}}
 function openAddAdmin(){document.getElementById('nAU').value='';document.getElementById('nAP').value='';document.getElementById('nAMC').value='';document.getElementById('addAdminModal').classList.add('show');}
 async function addAdmin(){
 const d={username:document.getElementById('nAU').value,password:document.getElementById('nAP').value,role:document.getElementById('nAR').value,'minecraft-name':document.getElementById('nAMC').value};
 if(!d.username||!d.password){toast('用户名和密码不能为空','error');return;}
 try{const r=await fetch('/api/admin/add',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(d)});
-const j=await r.json();if(j.success){toast('管理员已添加','success');closeM('addAdminModal');setTimeout(()=>location.reload(),500);}else toast(j.error||'添加失败','error');}
+const j=await r.json();if(j.success){toast('管理员已添加','success');closeM('addAdminModal');setTimeout(reloadKeep,500);}else toast(j.error||'添加失败','error');}
 catch(err){toast('网络错误','error');}}
 async function delAdmin(u){if(!confirm('确定删除管理员 '+u+'？'))return;
 try{const r=await fetch('/api/admin/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'username='+encodeURIComponent(u)});
-const j=await r.json();if(j.success){toast('管理员已删除','success');setTimeout(()=>location.reload(),500);}else toast(j.error||'删除失败','error');}
+const j=await r.json();if(j.success){toast('管理员已删除','success');setTimeout(reloadKeep,500);}else toast(j.error||'删除失败','error');}
 catch(err){toast('网络错误','error');}}
 async function changeMyPwd(){
 const o=document.getElementById('oldPwd').value,n=document.getElementById('newPwd').value,c=document.getElementById('confirmPwd').value;
@@ -231,10 +293,10 @@ r.style.display=(i>=(roomPage-1)*ROOM_PAGE_SIZE&&i<roomPage*ROOM_PAGE_SIZE)?'':'
 const pager=document.getElementById('roomPager');
 if(!pager)return;
 if(rows.length===1&&rows[0].classList.contains('empty')){pager.innerHTML='';return;}
-pager.innerHTML='<span style="font-size:13px;color:#6b7280;">共 '+rows.length+' 间</span>'
+pager.innerHTML='<span style="font-size:13px;color:var(--c-text-dim);">共 '+rows.length+' 间</span>'
 +'<button class="btn btn-secondary btn-sm" onclick="gotoRoomPage(1)">首页</button>'
 +'<button class="btn btn-secondary btn-sm" onclick="gotoRoomPage('+(roomPage-1)+')">上一页</button>'
-+'<span style="font-size:13px;color:#374151;font-weight:600;min-width:50px;text-align:center;">'+roomPage+' / '+totalPages+'</span>'
++'<span style="font-size:13px;color:var(--c-text);font-weight:600;min-width:50px;text-align:center;">'+roomPage+' / '+totalPages+'</span>'
 +'<button class="btn btn-secondary btn-sm" onclick="gotoRoomPage('+(roomPage+1)+')">下一页</button>'
 +'<button class="btn btn-secondary btn-sm" onclick="gotoRoomPage('+totalPages+')">末页</button>';
 }
@@ -247,17 +309,17 @@ roomPage=p;renderRoomPage();
 function applyStats(j){
 if(!j||j.onlinePlayers===undefined)return;
 document.getElementById('statOnline').textContent=j.onlinePlayers+' / '+j.maxPlayers;
-document.getElementById('statOnlineBar').style.width=((j.onlinePlayers/Math.max(j.maxPlayers,1))*100)+'%%';
+document.getElementById('statOnlineBar').style.width=((j.onlinePlayers/Math.max(j.maxPlayers,1))*100)+'%';
 const tpsEl=document.getElementById('statTps');tpsEl.textContent=j.tps.toFixed(2);
 const tpsBar=document.getElementById('statTpsBar');
-tpsBar.style.width=Math.min(j.tps*100,100)+'%%';
+tpsBar.style.width=Math.min(j.tps*100,100)+'%';
 tpsBar.className='progress-fill '+(j.tps>=19?'green':(j.tps>=15?'orange':''));
 const memUsed=j.usedMemoryMB||0,memMax=j.maxMemoryMB||1;
 const memPct=Math.round((memUsed/memMax)*100);
 document.getElementById('statMem').textContent=memUsed+' / '+memMax+' MB';
-document.getElementById('statMemBar').style.width=memPct+'%%';
+document.getElementById('statMemBar').style.width=memPct+'%';
 document.getElementById('statMemBar').className='progress-fill '+(memPct>=80?'orange':(memPct>=60?'':'green'));
-if(j.uptimeSeconds!=null){const s=j.uptimeSeconds;const d=Math.floor(s/86400),h=Math.floor((s%%86400)/3600),m=Math.floor((s%%3600)/60),sec=s%%60;document.getElementById('statUptime').textContent=(d>0?d+'天 ':'')+h+'时 '+m+'分 '+sec+'秒';}}
+if(j.uptimeSeconds!=null){const s=j.uptimeSeconds;const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60),sec=s%60;document.getElementById('statUptime').textContent=(d>0?d+'天 ':'')+h+'时 '+m+'分 '+sec+'秒';}}
 async function refreshStats(){
 try{const r=await fetch('/api/server');const j=await r.json();applyStats(j);}catch(e){}}
 if(window.EventSource){
@@ -279,8 +341,24 @@ const j=await r.json();
 if(j.lines&&j.lines.length>0){updateConsole(j.lines.join('\\n'));}
 else{updateConsole('[等待日志输出...]');}}catch(e){updateConsole('[连接错误: '+e.message+']');}}
 function clearConsole(){const el=document.getElementById('consoleOutput');if(el)el.textContent='';}
+// 高危命令前缀：低于此集合的命令需要二次输入确认（防误操作）
+const DANGER_CMDS=/^(\s*(stop|restart|reload|kick|ban(?:-ip)?|pardon|op|deop|whitelist|save-all|kill)\b)/i;
 async function execConsole(){
 const cmd=document.getElementById('consoleCmd').value.trim();if(!cmd)return;
+if(DANGER_CMDS.test(cmd)){
+document.getElementById('ccCmdInput').value='';
+document.getElementById('ccCmdDisplay').textContent=cmd;
+document.getElementById('consoleCfmModal').classList.add('show');return;}
+await doExecConsole(cmd);}
+async function confirmConsoleExec(){
+const confirmed=document.getElementById('ccCmdInput').value.trim();
+const pending=document.getElementById('ccCmdDisplay').textContent;
+closeM('consoleCfmModal');
+if(confirmed!==pending){
+    const el=document.getElementById('consoleCmd');toast('两次输入不一致，已取消执行','error');if(el)el.value='';
+    setTimeout(refreshConsole,300);return;}
+await doExecConsole(pending);}
+async function doExecConsole(cmd){
 try{const r=await fetch('/api/console/execute',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'command='+encodeURIComponent(cmd)});
 const j=await r.json();if(j.success){toast(j.message,'success');document.getElementById('consoleCmd').value='';setTimeout(refreshConsole,300);}else toast(j.error||'执行失败','error');}
 catch(err){toast('网络错误','error');}}
@@ -305,32 +383,32 @@ const el=document.getElementById('chartsContent');if(!el)return;
 let html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">';
 // 入住率
 html+='<div class="chart-card"><h4>入住率</h4>';
-html+='<div style="font-size:32px;font-weight:700;color:#667eea;">'+j.occupancyRate+'%%</div>';
-html+='<div class="muted" style="font-size:12px;margin-top:4px;">'+j.occupied+'/'+j.totalRooms+' 间已入住</div></div>';
+html+='<div style="font-size:34px;font-weight:600;letter-spacing:-.035em;font-family:var(--f-mono);color:var(--c-amber);">'+j.occupancyRate+'%</div>';
+html+='<div class="muted" style="font-size:12px;margin-top:6px;">'+j.occupied+'/'+j.totalRooms+' 间已入住</div></div>';
 // 收入统计
 html+='<div class="chart-card"><h4>收入统计</h4>';
-html+='<div style="font-size:24px;font-weight:700;color:#10b981;">'+j.occupiedRevenue+'</div>';
+html+='<div style="font-size:24px;font-weight:600;letter-spacing:-.03em;font-family:var(--f-mono);color:var(--c-text);">'+j.occupiedRevenue+'</div>';
 html+='<div class="muted" style="font-size:12px;margin-top:4px;">已入住房间总收入</div>';
 html+='<div class="muted" style="font-size:14px;margin-top:8px;">平均价格: '+j.avgPrice+'</div></div>';
 // 房间状态分布
 html+='<div class="chart-card"><h4>房间状态分布</h4>';
 const maxStatus=Math.max(j.available,j.occupied,j.maintenance,j.locked,1);
-html+=barChart('可入住',j.available,maxStatus,'#10b981');
-html+=barChart('已入住',j.occupied,maxStatus,'#f59e0b');
-html+=barChart('维护中',j.maintenance,maxStatus,'#8b5cf6');
-html+=barChart('已锁定',j.locked,maxStatus,'#6b7280');
+html+=barChart('可入住',j.available,maxStatus,'#16704A');
+  html+=barChart('已入住',j.occupied,maxStatus,'#1F35E0');
+  html+=barChart('维护中',j.maintenance,maxStatus,'#A66A00');
+  html+=barChart('已锁定',j.locked,maxStatus,'#C3C3BC');
 html+='</div>';
 // 价格分布
 html+='<div class="chart-card"><h4>价格分布</h4>';
 if(j.priceDist){const maxP=Math.max(...j.priceDist.map(p=>p.count),1);
-j.priceDist.forEach(p=>{html+=barChart(p.range,p.count,maxP,'#667eea');});}
+j.priceDist.forEach(p=>{html+=barChart(p.range,p.count,maxP,'var(--c-amber)');});}
 html+='</div>';
 // 最近 30 天入住趋势
 html+='<div class="chart-card"><h4>近 30 天入住趋势</h4>';
 if(j.dailyCheckins&&j.dailyCheckins.length>0){const maxC=Math.max(...j.dailyCheckins.map(d=>d.count),1);
 html+='<div style="display:flex;align-items:flex-end;gap:3px;height:110px;padding-top:6px;">';
 j.dailyCheckins.forEach(d=>{const h=Math.max(Math.round(d.count/maxC*100),2);
-html+='<div style="flex:1;min-width:6px;text-align:center;"><div style="height:'+h+'px;background:linear-gradient(180deg,#3b82f6,#8b5cf6);border-radius:3px 3px 0 0;" title="'+d.date+': '+d.count+' 次"></div></div>';});
+html+='<div style="flex:1;min-width:6px;text-align:center;"><div style="height:'+h+'px;background:var(--c-text);border-radius:1px 1px 0 0;" title="'+d.date+': '+d.count+' 次"></div></div>';});
 html+='</div>';
 const totalCheckins=j.dailyCheckins.reduce((a,d)=>a+d.count,0);
 html+='<div class="muted" style="font-size:12px;margin-top:6px;">30 天共入住 '+totalCheckins+' 次，日均 '+(totalCheckins/30).toFixed(1)+' 次</div>';}
@@ -339,14 +417,14 @@ html+='</div>';
 // Top 5 房主
 html+='<div class="chart-card"><h4>Top 5 房主</h4>';
 if(j.topOwners&&j.topOwners.length>0){const maxO=Math.max(...j.topOwners.map(o=>o.count),1);
-j.topOwners.forEach(o=>{html+=barChart(o.name,o.count,maxO,'#ec4899');});}
+j.topOwners.forEach(o=>{html+=barChart(o.name,o.count,maxO,'#121211');});}
 else{html+='<div class="muted" style="font-size:13px;">暂无数据</div>';}
 html+='</div>';
 html+='</div>';
 el.innerHTML=html;}catch(e){const el=document.getElementById('chartsContent');if(el)el.textContent='加载失败';}}
 function barChart(label,value,max,color){
 const pct=Math.round(value/max*100);
-return '<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;"><span>'+label+'</span><span style="font-weight:600;">'+value+'</span></div><div class="chart-bar"><div style="width:'+pct+'%%;height:100%%;background:'+color+';border-radius:4px;transition:width 0.5s;"></div></div></div>';}
+return '<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;"><span>'+label+'</span><span style="font-weight:600;">'+value+'</span></div><div class="chart-bar"><div style="width:'+pct+'%;height:100%;background:'+color+';border-radius:4px;transition:width 0.5s;"></div></div></div>';}
 // 批量操作
 function toggleSelectAll(cb){
 document.querySelectorAll('.room-checkbox').forEach(c=>c.checked=cb.checked);
@@ -365,23 +443,39 @@ if(action==='delete'&&!confirm('确定批量删除 '+ids.length+' 个房间？�
 if(action!=='delete'&&!confirm('确定对 '+ids.length+' 个房间执行此操作？'))return;
 try{const body='action='+action+'&roomIds='+encodeURIComponent(ids.join(','));
 const r=await fetch('/api/room/batch',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body});
-const j=await r.json();toast(j.message||'操作完成',j.success?'success':'error');
-if(j.errors)console.warn(j.errors);
-setTimeout(()=>location.reload(),800);}catch(e){toast('网络错误','error');}}
-async function batchSetPrice(){
+const j=await r.json();
+if(j.errors){showBatchErrors(j.errors);return;}
+toast(j.message||'操作完成',j.success?'success':'error');
+if(j.success)reloadKeep();}catch(e){toast('网络错误','error');}}
+// 批量失败清单展示：替代原先只 print 到控制台
+function showBatchErrors(errs){
+const items=[];
+if(Array.isArray(errs))items.push(...errs.map(e=>typeof e==='string'?e:JSON.stringify(e)));
+else if(typeof errs==='object')for(const k in errs)items.push(k+': '+errs[k]);
+toast('部分房间操作失败（'+(items.length||1)+' 项）：'+(items.slice(0,5).join('；')||JSON.stringify(errs))+'...','error');}
+function openBatchModal(mode){
+document.getElementById('batchModalTitle').textContent=(mode==='price'?'批量修改价格':'批量修改状态');
+document.getElementById('batchModalBody').innerHTML=(mode==='price')
+?'<div class="form-group"><label for="bPrice">新单价（对所有选中房间生效）</label><input type="number" step="0.01" min="0" id="bPrice" placeholder="输入新价格"></div>'
+:'<div class="form-group"><label for="bStatus">新状态</label><select id="bStatus"><option value="AVAILABLE">可入住</option><option value="OCCUPIED">已入住</option><option value="MAINTENANCE">维护中</option></select></div>';
+document.getElementById('batchModal').dataset.mode=mode;
+document.getElementById('batchModal').classList.add('show');}
+async function confirmBatch(){
+const mode=document.getElementById('batchModal').dataset.mode;
 const ids=getSelectedRoomIds();if(ids.length===0)return;
-const price=prompt('输入新的价格（对所有选中的 '+ids.length+' 个房间生效）:');if(price===null)return;
-try{const body='action=setPrice&roomIds='+encodeURIComponent(ids.join(','))+'&price='+encodeURIComponent(price);
-const r=await fetch('/api/room/batch',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body});
-const j=await r.json();toast(j.message||'操作完成',j.success?'success':'error');
-setTimeout(()=>location.reload(),800);}catch(e){toast('网络错误','error');}}
-async function batchSetStatus(){
-const ids=getSelectedRoomIds();if(ids.length===0)return;
-const status=prompt('输入状态 (AVAILABLE / OCCUPIED / MAINTENANCE):');if(status===null)return;
-try{const body='action=setStatus&roomIds='+encodeURIComponent(ids.join(','))+'&status='+encodeURIComponent(status);
-const r=await fetch('/api/room/batch',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body});
-const j=await r.json();toast(j.message||'操作完成',j.success?'success':'error');
-setTimeout(()=>location.reload(),800);}catch(e){toast('网络错误','error');}}
+const extra=(mode==='price')?'&price='+encodeURIComponent(document.getElementById('bPrice').value)
+:'&status='+encodeURIComponent(document.getElementById('bStatus').value);
+if(mode==='price'){
+const pv=document.getElementById('bPrice').value;
+if(!pv||Number(pv)<0||isNaN(Number(pv))){toast('请输入有效价格','error');return;}
+}
+closeM('batchModal');
+const action=(mode==='price')?'setPrice':'setStatus';
+try{const r=await fetch('/api/room/batch',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'action='+action+'&roomIds='+encodeURIComponent(ids.join(','))+extra});
+const j=await r.json();
+if(j.errors){showBatchErrors(j.errors);return;}
+toast(j.message||'操作完成',j.success?'success':'error');
+if(j.success)reloadKeep();}catch(e){toast('网络错误','error');}}
 function toggleBcPlayer(){
     const target=document.getElementById('bcTarget').value;
     document.getElementById('bcPlayerGroup').style.display = target==='player' ? 'block' : 'none';
@@ -414,7 +508,7 @@ async function loadTransactions(){
     statsEl.innerHTML=html;}
     txPage=1;renderTxPage();}catch(e){showTxEmpty('加载失败: '+e.message);}}
 function showTxEmpty(msg){
-    const t=document.getElementById('txTbody');if(t)t.innerHTML='<tr><td colspan="6" style="text-align:center;color:#999;padding:30px;">'+msg+'</td></tr>';
+    const t=document.getElementById('txTbody');if(t)t.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--c-text-faint);padding:30px;">'+msg+'</td></tr>';
     const p=document.getElementById('txPager');if(p)p.innerHTML='';}
 function getVisibleTx(){
     const q=document.getElementById('txSearch')?.value.toLowerCase().trim()||'';
@@ -441,14 +535,14 @@ function renderTxPage(){
     const typeTag="<span class='status-tag "+tm[1]+"'>"+tm[0]+"</span>";
     const isRecv=t.type==='CHECKIN_RECV';
     const amt=(isRecv?'+':'-')+Number(t.amount).toFixed(2);
-    const amtStyle=isRecv?'color:#10b981;font-weight:600;':'color:#ef4444;font-weight:600;';
+    const amtStyle=isRecv?'color:var(--c-ok-strong);font-weight:600;':'color:var(--c-danger-strong);font-weight:600;';
     html+='<tr><td>'+(t.timeStr||'')+'</td><td>'+typeTag+'</td><td>'+escapeHtml(t.player||'')+'</td><td>'+escapeHtml(t.roomName||t.roomId||'')+'</td><td style="text-align:right;'+amtStyle+'">'+amt+'</td><td>'+escapeHtml(t.remark||'')+'</td></tr>';}
     tbody.innerHTML=html;
     const pager=document.getElementById('txPager');if(!pager)return;
-    pager.innerHTML='<span style="font-size:13px;color:#6b7280;">共 '+rows.length+' 条</span>'
+    pager.innerHTML='<span style="font-size:13px;color:var(--c-text-dim);">共 '+rows.length+' 条</span>'
     +'<button class="btn btn-secondary btn-sm" onclick="gotoTxPage(1)">首页</button>'
     +'<button class="btn btn-secondary btn-sm" onclick="gotoTxPage('+(txPage-1)+')">上一页</button>'
-    +'<span style="font-size:13px;color:#374151;font-weight:600;min-width:50px;text-align:center;">'+txPage+' / '+totalPages+'</span>'
+    +'<span style="font-size:13px;color:var(--c-text);font-weight:600;min-width:50px;text-align:center;">'+txPage+' / '+totalPages+'</span>'
     +'<button class="btn btn-secondary btn-sm" onclick="gotoTxPage('+(txPage+1)+')">下一页</button>'
     +'<button class="btn btn-secondary btn-sm" onclick="gotoTxPage('+totalPages+')">末页</button>';}
 function gotoTxPage(p){
@@ -468,29 +562,28 @@ async function loadRatings(){
     const rsEl=document.getElementById('rtRoomStats');
     if(rsEl){
     const stats=j.roomStats||[];
-    if(stats.length===0){rsEl.innerHTML='<tr><td colspan="4" style="text-align:center;color:#999;padding:30px;">暂无评分</td></tr>';}
+    if(stats.length===0){rsEl.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--c-text-faint);padding:30px;">暂无评分</td></tr>';}
     else{
     let html='';
     stats.forEach(s=>{
-    html+='<tr><td>'+escapeHtml(s.roomName)+' <span style="color:#999;font-size:12px;">('+escapeHtml(s.roomId)+')</span></td><td>'+escapeHtml(s.owner)+'</td><td style="text-align:center;color:#f59e0b;font-weight:600;">'+Number(s.avg).toFixed(1)+' '+starText(s.avg)+'</td><td style="text-align:center;">'+s.count+'</td></tr>';});
+    html+='<tr><td>'+escapeHtml(s.roomName)+' <span style="color:var(--c-text-faint);font-size:12px;">('+escapeHtml(s.roomId)+')</span></td><td>'+escapeHtml(s.owner)+'</td><td style="text-align:center;color:var(--c-warn-strong);font-weight:600;">'+Number(s.avg).toFixed(1)+' '+starText(s.avg)+'</td><td style="text-align:center;">'+s.count+'</td></tr>';});
     rsEl.innerHTML=html;}}
     const tb=document.getElementById('rtTbody');
     if(tb){
     const list=j.list||[];
-    if(list.length===0){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#999;padding:30px;">暂无评价</td></tr>';return;}
+    if(list.length===0){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--c-text-faint);padding:30px;">暂无评价</td></tr>';return;}
     let html='';
     list.forEach(r=>{
-    html+='<tr><td>'+(r.timeStr||'')+'</td><td>'+escapeHtml(r.roomName||r.roomId||'')+'</td><td>'+escapeHtml(r.guest||'')+'</td><td style="text-align:center;color:#f59e0b;">'+starText(r.score)+'</td><td>'+escapeHtml(r.comment||'')+'</td></tr>';});
+    html+='<tr><td>'+(r.timeStr||'')+'</td><td>'+escapeHtml(r.roomName||r.roomId||'')+'</td><td>'+escapeHtml(r.guest||'')+'</td><td style="text-align:center;color:var(--c-warn-strong);">'+starText(r.score)+'</td><td>'+escapeHtml(r.comment||'')+'</td></tr>';});
     tb.innerHTML=html;}}
-    catch(e){const tb=document.getElementById('rtTbody');if(tb)tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#999;padding:30px;">加载失败: '+e.message+'</td></tr>';}}
+    catch(e){const tb=document.getElementById('rtTbody');if(tb)tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--c-text-faint);padding:30px;">加载失败: '+e.message+'</td></tr>';}}
 async function loadEscrow(){
     try{const r=await fetch('/api/escrow');if(!r.ok)return;
     const j=await r.json();
     const modeBar=document.getElementById('escModeBar');
     if(modeBar){
-    const isDark=document.body.classList.contains('dark');
-    if(j.escrowMode){modeBar.innerHTML='<span>当前为托管模式：房主收益进入待提现余额，可在此一键提现到钱包</span>';modeBar.style.background=isDark?'#422006':'#fffbeb';modeBar.style.border='1px solid '+(isDark?'#78350f':'#fde68a');modeBar.style.color=isDark?'#fbbf24':'#d97706';}
-    else{modeBar.innerHTML='<span>当前为实时到账模式：收益已直接发放到房主钱包。可在 config.yml 开启 economy.escrow-mode 启用托管提现</span>';modeBar.style.background=isDark?'#1e293b':'#f3f4f6';modeBar.style.border='1px solid '+(isDark?'#334155':'#e5e7eb');modeBar.style.color=isDark?'#94a3b8':'#6b7280';}}
+    if(j.escrowMode){modeBar.innerHTML='<span>当前为托管模式：房主收益进入待提现余额，可在此一键提现到钱包</span>';modeBar.style.background='var(--c-warn-bg)';modeBar.style.border='1px solid var(--c-border)';modeBar.style.color='var(--c-amber-strong)';}
+    else{modeBar.innerHTML='<span>当前为实时到账模式：收益已直接发放到房主钱包。可在 config.yml 开启 economy.escrow-mode 启用托管提现</span>';modeBar.style.background='var(--c-surface-2)';modeBar.style.border='1px solid var(--c-border)';modeBar.style.color='var(--c-text-dim)';}}
     const statsEl=document.getElementById('escStats');if(statsEl){
     let html='<div class="card orange"><div class="label">待提现总额</div><div class="value">'+Number(j.totalPending||0).toFixed(2)+'</div></div>';
     html+='<div class="card green"><div class="label">待提现账户</div><div class="value">'+(j.balances||[]).length+'</div></div>';
@@ -499,31 +592,31 @@ async function loadEscrow(){
     const tb=document.getElementById('escTbody');
     if(tb){
     const bal=j.balances||[];
-    if(bal.length===0){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#999;padding:30px;">暂无待提现收益</td></tr>';}
+    if(bal.length===0){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--c-text-faint);padding:30px;">暂无待提现收益</td></tr>';}
     else{
     let html='';
     bal.forEach(b=>{
-    let op='<span style="color:#999;">-</span>';
+    let op='<span style="color:var(--c-text-faint);">-</span>';
     if(j.escrowMode&&Number(b.pending)>0){op='<button class="btn btn-primary btn-sm" onclick="withdrawEscrow(\''+b.uuid+'\',\''+escapeHtml(b.name)+'\')">提现</button>';}
-    html+='<tr><td>'+escapeHtml(b.name)+'</td><td style="text-align:right;color:#10b981;font-weight:600;">+'+Number(b.totalEarned).toFixed(2)+'</td><td style="text-align:right;">'+Number(b.totalWithdrawn).toFixed(2)+'</td><td style="text-align:right;color:#f59e0b;font-weight:600;">'+Number(b.pending).toFixed(2)+'</td><td style="text-align:center;">'+op+'</td></tr>';});
+    html+='<tr><td>'+escapeHtml(b.name)+'</td><td style="text-align:right;color:var(--c-ok-strong);font-weight:600;">+'+Number(b.totalEarned).toFixed(2)+'</td><td style="text-align:right;">'+Number(b.totalWithdrawn).toFixed(2)+'</td><td style="text-align:right;color:var(--c-warn-strong);font-weight:600;">'+Number(b.pending).toFixed(2)+'</td><td style="text-align:center;">'+op+'</td></tr>';});
     tb.innerHTML=html;}}
     const wtb=document.getElementById('escWTbody');
     if(wtb){
     const list=j.withdrawals||[];
-    if(list.length===0){wtb.innerHTML='<tr><td colspan="3" style="text-align:center;color:#999;padding:30px;">暂无提现记录</td></tr>';return;}
+    if(list.length===0){wtb.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--c-text-faint);padding:30px;">暂无提现记录</td></tr>';return;}
     let html='';
     list.forEach(w=>{
-    html+='<tr><td>'+(w.timeStr||'')+'</td><td>'+escapeHtml(w.name)+'</td><td style="text-align:right;color:#10b981;font-weight:600;">+'+Number(w.amount).toFixed(2)+'</td></tr>';});
+    html+='<tr><td>'+(w.timeStr||'')+'</td><td>'+escapeHtml(w.name)+'</td><td style="text-align:right;color:var(--c-ok-strong);font-weight:600;">+'+Number(w.amount).toFixed(2)+'</td></tr>';});
     wtb.innerHTML=html;}}
-    catch(e){const tb=document.getElementById('escTbody');if(tb)tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#999;padding:30px;">加载失败: '+e.message+'</td></tr>';}}
+    catch(e){const tb=document.getElementById('escTbody');if(tb)tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--c-text-faint);padding:30px;">加载失败: '+e.message+'</td></tr>';}}
 async function withdrawEscrow(uuid,name){
     if(!confirm('确认将 '+name+' 的待提现收益发放到其钱包？'))return;
     try{const body=new URLSearchParams({uuid:uuid,name:name});
     const r=await fetch('/api/escrow/withdraw',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()});
     const j=await r.json();
-    if(j.success){alert(j.message);loadEscrow();}
-    else{alert(j.message||'提现失败');}}
-    catch(e){alert('网络错误: '+e.message);}}
+    if(j.success){toast(j.message,'success');loadEscrow();}
+    else{toast(j.message||'提现失败','error');}}
+    catch(e){toast('网络错误: '+e.message,'error');}}
 async function loadReport(){
 try{const r=await fetch('/api/stats/report');const j=await r.json();
 const el=document.getElementById('reportContent');if(!el)return;
@@ -536,13 +629,13 @@ const cur=j[p[2]],prev=j[p[3]];
 const ck=cur.checkins,pk=prev.checkins,cr=cur.revenue,pr=prev.revenue;
 const ckPct=pk>0?Math.round((ck-pk)/pk*100):(ck>0?100:0);
 const crPct=pr>0?Math.round((cr-pr)/pr*100):(cr>0?100:0);
-const delta=function(v,pct){return '<span class="rp-delta '+(v>=0?'rp-delta-up':'rp-delta-down')+'">'+(v>=0?'▲':'▼')+' '+Math.abs(pct)+'%%</span>';};
+const delta=function(v,pct){return '<span class="rp-delta '+(v>=0?'rp-delta-up':'rp-delta-down')+'">'+(v>=0?'▲':'▼')+' '+Math.abs(pct)+'%</span>';};
 html+='<div class="rp-card"><h4>'+p[0]+'</h4>'
 +'<div class="rp-cmp-row"><div class="rp-cmp-label">入住次数</div><div class="rp-cmp-val">'+ck+delta(ck-pk,ckPct)+'</div></div>'
 +'<div class="rp-cmp-sub">'+p[1]+': '+pk+' 次</div>'
 +'<div class="rp-cmp-row"><div class="rp-cmp-label">收入</div><div class="rp-cmp-val">'+cr+delta(cr-pr,crPct)+'</div></div>'
 +'<div class="rp-cmp-sub">'+p[1]+': '+pr+'</div></div>';});}
-else{html+='<div class="rp-card"><h4>数据对比</h4><div style="color:#999;font-size:13px;padding:20px;text-align:center;">暂无数据</div></div>';}
+else{html+='<div class="rp-card"><h4>数据对比</h4><div style="color:var(--c-text-faint);font-size:13px;padding:20px;text-align:center;">暂无数据</div></div>';}
 // 房主收益排行 Top 10
 html+='<div class="rp-card"><h4>房主收益排行 Top 10</h4>';
 if(j.topOwners&&j.topOwners.length>0){
@@ -551,16 +644,63 @@ html+='<div class="rp-rank-list">';
 j.topOwners.forEach((o,i)=>{
 const w=Math.max(Math.round(o.revenue/maxR*100),3);
 const badge=i===0?'rp-rank-badge gold':i===1?'rp-rank-badge silver':i===2?'rp-rank-badge bronze':'rp-rank-badge other';
-html+='<div class="rp-rank-item"><span class="'+badge+'">'+(i+1)+'</span><span class="rp-rank-name" title="'+escapeHtml(o.name)+'">'+escapeHtml(o.name)+'</span><div class="rp-rank-bar"><div class="rp-rank-bar-fill" style="width:'+w+'%%"></div></div><span class="rp-rank-count">'+o.count+'次</span><span class="rp-rank-rev">+'+o.revenue+'</span></div>';});
+html+='<div class="rp-rank-item"><span class="'+badge+'">'+(i+1)+'</span><span class="rp-rank-name" title="'+escapeHtml(o.name)+'">'+escapeHtml(o.name)+'</span><div class="rp-rank-bar"><div class="rp-rank-bar-fill" style="width:'+w+'%"></div></div><span class="rp-rank-count">'+o.count+'次</span><span class="rp-rank-rev">+'+o.revenue+'</span></div>';});
 html+='</div>';}
-else{html+='<div style="color:#999;font-size:13px;padding:20px;text-align:center;">暂无数据</div>';}
+else{html+='<div style="color:var(--c-text-faint);font-size:13px;padding:20px;text-align:center;">暂无数据</div>';}
 html+='</div>';
 html+='</div>';
 el.innerHTML=html;}catch(e){const el=document.getElementById('reportContent');if(el)el.textContent='加载失败';}}
 renderRoomPage();
-loadCharts();
-loadReport();
-loadTransactions();
-loadRatings();
-loadEscrow();
+loadCharts();loadReport();loadTransactions();loadRatings();loadEscrow();
+highlightNav();
+/* ===== 店铺管理 ===== */
+function toggleStockInput(){var m=document.getElementById('scMode').value;document.getElementById('stockWrap').style.display=m==='FIXED'?'':'none';}
+function esModeChanged(){document.getElementById('esStockWrap').style.display=document.getElementById('esMode').value==='FIXED'?'':'none';}
+async function createShop(){
+var d={container:document.getElementById('scContainer').value,
+name:document.getElementById('scName').value,material:document.getElementById('scMaterial').value,
+price:document.getElementById('scPrice').value,mode:document.getElementById('scMode').value,
+stock:document.getElementById('scStock').value};
+if(!d.container){toast('请先选择可用的绑定容器（需店主在游戏中放置箱子/木桶等容器）','error');return;}
+if(!d.material||!d.material.trim()){toast('请填写商品类型','error');return;}
+if(!d.price||isNaN(+d.price)||+d.price<=0){toast('请填写正确的单价','error');return;}
+try{const r=await fetch('/api/shops/create',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(d)});
+const j=await r.json();if(j.success){toast(j.message,'success');setTimeout(reloadKeep,500);}else toast(j.message||'创建失败','error');}
+catch(err){toast('网络错误','error');}}
+async function toggleShop(id,next){if(next){if(!confirm('确认开业？'))return;}else{if(!confirm('确认停业？'))return;}
+try{const r=await fetch('/api/shops/update',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'shopId='+encodeURIComponent(id)+'&enabled='+next});
+const j=await r.json();if(j.success){toast(next?'店铺已开业':'店铺已停业','success');setTimeout(reloadKeep,500);}else toast(j.message||'操作失败','error');}
+catch(err){toast('网络错误','error');}}
+function openEditShop(id,name,material,price,mode,stock){
+document.getElementById('esId').value=id;
+document.getElementById('esName').value=name;
+document.getElementById('esMaterial').value=material;
+document.getElementById('esPrice').value=price;
+document.getElementById('esMode').value=mode;
+document.getElementById('esStock').value=stock;
+esModeChanged();
+document.getElementById('shopEditModal').classList.add('show');}
+async function saveShopEdit(){
+var d={shopId:document.getElementById('esId').value,name:document.getElementById('esName').value,
+material:document.getElementById('esMaterial').value,price:document.getElementById('esPrice').value,
+mode:document.getElementById('esMode').value,stock:document.getElementById('esStock').value};
+try{const r=await fetch('/api/shops/update',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(d)});
+const j=await r.json();if(j.success){toast('店铺已更新','success');closeM('shopEditModal');setTimeout(reloadKeep,500);}else toast(j.message||'更新失败','error');}
+catch(err){toast('网络错误','error');}}
+async function restockShop(id){if(!confirm('把容器内同种物品一次性入账为固定库存（容器内物品会移出），确认？'))return;
+try{const r=await fetch('/api/shops/restock',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'shopId='+encodeURIComponent(id)});
+const j=await r.json();if(j.success){toast(j.message,'success');setTimeout(reloadKeep,600);}else toast(j.message||'补货失败','error');}
+catch(err){toast('网络错误','error');}}
+async function delShop(id,name){if(!confirm('确定删除店铺 '+name+'？已售出的待领取物品仍会照常发放'))return;
+try{const r=await fetch('/api/shops/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'shopId='+encodeURIComponent(id)});
+const j=await r.json();if(j.success){toast(j.message,'success');setTimeout(reloadKeep,500);}else toast(j.message||'删除失败','error');}
+catch(err){toast('网络错误','error');}}
+let buyShopId=null;
+function buyShop(id,name){buyShopId=id;document.getElementById('buyModalTitle').textContent='购买 '+name;document.getElementById('buyNum').value=1;document.getElementById('buyModal').classList.add('show');}
+async function confirmBuy(){
+const n=parseInt(document.getElementById('buyNum').value,10);if(!n||n<1){toast('请输入有效数量','error');return;}
+const id=buyShopId;closeM('buyModal');buyShopId=null;
+try{const r=await fetch('/api/shops/buy',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'shopId='+encodeURIComponent(id)+'&amount='+n});
+const j=await r.json();if(j.success){toast(j.message,'success');setTimeout(reloadKeep,600);}else toast(j.message||'购买失败','error');}
+catch(err){toast('网络错误','error');}}
 </script></body></html>

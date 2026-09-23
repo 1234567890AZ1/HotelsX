@@ -38,70 +38,116 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 主菜单：酒店礼宾台。
+ *
+ * <p>视觉结构（暖木 + 黄铜）：
+ * <ul>
+ *   <li>上下两条琥珀色檐口（{@link #RAIL}）框住台面</li>
+ *   <li>四角与左右立柱为深木色（{@link #POST}），中庭为墨黑（{@link #FIELD}）</li>
+ *   <li>正中 4 号位是礼宾铃，兼作欢迎牌与实时概览</li>
+ *   <li>第一排三件「房间业务」，中庭一块「大堂看板」，第三排三件「后台事务」</li>
+ * </ul>
+ */
 public class MainMenuGUI {
 
     public static final String GUI_NAME = "main_menu";
-    private static final String TITLE = "§8§l酒店系统";
+    private static final String TITLE = "§6§l酒 店 礼 宾 台";
+
+    /** 檐口：琥珀色玻璃板，读作大堂上方的暖光灯带 */
+    private static final Material RAIL = Material.ORANGE_STAINED_GLASS_PANE;
+    /** 立柱：深木色玻璃板，构成四角与左右承重柱 */
+    private static final Material POST = Material.BROWN_STAINED_GLASS_PANE;
+    /** 中庭：墨黑玻璃板，让台面内容向前浮出 */
+    private static final Material FIELD = Material.BLACK_STAINED_GLASS_PANE;
+
+    /** 说明文字里的分隔细线：删除线空格是原版界面画线的惯用手法 */
+    private static final String RULE = "§8§m                    ";
 
     public static void open(Player player) {
         Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME), 45, TITLE);
 
-        HotelsPlugin plugin = HotelsPlugin.getInstance();
+        fill(inv, RAIL, 1, 2, 3, 5, 6, 7, 37, 38, 39, 40, 41, 42, 43);
+        fill(inv, POST, 0, 8, 9, 17, 18, 26, 27, 35, 36, 44);
+        fill(inv, FIELD, 10, 12, 14, 16, 19, 20, 21, 23, 24, 25, 28, 30, 32, 34);
 
-        ItemStack borderTop = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
-        for (int i = 0; i < 9; i++) {
-            inv.setItem(i, borderTop);
-        }
-        inv.setItem(4, createItem(Material.ENDER_PEARL, "§5§l酒 店 系 统", "§8欢迎使用"));
+        int myRooms = countPlayerRooms(player);
+        int available = countAvailableRooms();
+        int occupied = countByStatus(HotelRoom.RoomStatus.OCCUPIED);
+        int maintenance = countByStatus(HotelRoom.RoomStatus.MAINTENANCE);
 
-        ItemStack borderBottom = createItem(Material.PURPLE_STAINED_GLASS_PANE, "§8 ");
-        for (int i = 36; i < 45; i++) {
-            inv.setItem(i, borderBottom);
-        }
+        // 台面正中：礼宾铃，兼作欢迎牌与实时概览
+        inv.setItem(4, createItem(Material.BELL, "§6§l酒 店 礼 宾 台",
+                "§7欢迎回来，§f" + player.getName(),
+                RULE,
+                "§7我的房间 §f" + myRooms + " §8| §7空闲中 §a" + available,
+                RULE,
+                "§8请在下方选择要办理的业务"));
 
-        ItemStack borderSide = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
-        for (int i = 9; i < 36; i += 9) {
-            inv.setItem(i, borderSide);
-            inv.setItem(i + 8, borderSide);
-        }
-
-        inv.setItem(11, createItem(Material.OAK_DOOR, "§d§l我的房间",
+        // 第一排：房间业务
+        inv.setItem(11, createItem(Material.OAK_DOOR, "§6§l我的房间",
                 "§7查看和管理你拥有的房间",
-                "§7你共有: §f" + countPlayerRooms(player) + " §7个房间",
-                "",
-                "§8点击查看"));
+                RULE,
+                "§7持有房间 §f" + myRooms + " §7个",
+                RULE,
+                "§8» 点击进入"));
 
-        inv.setItem(13, createItem(Material.COMPASS, "§d§l浏览房间",
+        inv.setItem(13, createItem(Material.COMPASS, "§6§l浏览房间",
                 "§7查看所有可入住的房间",
-                "§7当前空闲: §f" + countAvailableRooms() + " §7间",
-                "",
-                "§8点击浏览"));
+                RULE,
+                "§7当前空闲 §f" + available + " §7间",
+                RULE,
+                "§8» 点击浏览"));
 
-        inv.setItem(15, createItem(Material.EMERALD_BLOCK, "§a§l创建新房间",
-                "§7使用木斧选择区域后创建",
-                "§7① 获取木斧选区",
-                "§7② 站在传送点输入 /ht create <名称>",
-                "",
-                "§8点击开始"));
+        inv.setItem(15, createItem(Material.EMERALD_BLOCK, "§6§l创建新房间",
+                "§7选区后即可开设新房间",
+                RULE,
+                "§7第一步 §f手持木斧选两点",
+                "§7第二步 §f站在传送点上",
+                "§7第三步 §f/ht create <名称>",
+                RULE,
+                "§8» 点击查看指引"));
 
-        inv.setItem(29, createItem(Material.CHEST, "§d§l酒店合集",
+        // 中庭：大堂看板
+        inv.setItem(22, createItem(Material.OAK_SIGN, "§e§l今日概览",
+                "§7礼宾台实时统计",
+                RULE,
+                "§7房间总数 §f" + countTotalRooms(),
+                "§7空闲中 §a" + available,
+                "§7已入住 §c" + occupied,
+                "§7维护中 §7" + maintenance,
+                RULE,
+                "§8数据于打开界面时统计"));
+
+        // 第三排：后台事务
+        inv.setItem(29, createItem(Material.CHEST, "§f§l酒店合集",
                 "§7创建和管理房间合集",
-                "§7浏览所有玩家创建的酒店",
-                "",
-                "§8点击进入"));
+                "§7浏览其他玩家开设的酒店",
+                RULE,
+                "§8» 点击进入"));
 
-        inv.setItem(31, createItem(Material.BOOK, "§b§l帮助说明",
+        inv.setItem(31, createItem(Material.BOOK, "§f§l帮助说明",
                 "§7查看酒店系统使用指南",
-                "§7命令列表 & 玩法说明",
-                "",
-                "§8点击查看"));
+                "§7命令列表与玩法说明",
+                RULE,
+                "§8» 点击查看"));
 
-        inv.setItem(33, createItem(Material.GOLD_BLOCK, "§6§l房间排行榜",
+        inv.setItem(33, createItem(Material.GOLD_BLOCK, "§f§l房间排行榜",
                 "§7查看最大的房间排名",
-                "",
-                "§8点击查看"));
+                RULE,
+                "§7榜单长度 §fTOP 10",
+                RULE,
+                "§8» 点击查看"));
 
         player.openInventory(inv);
+    }
+
+    /** 用同一种玻璃板铺满一组槽位 */
+    private static void fill(Inventory inv, Material material, int... slots) {
+        ItemStack pane = createItem(material, "§8 ");
+        for (int slot : slots) {
+            inv.setItem(slot, pane);
+        }
     }
 
     private static int countPlayerRooms(Player player) {
@@ -114,6 +160,24 @@ public class MainMenuGUI {
         HotelsPlugin plugin = HotelsPlugin.getInstance();
         if (plugin == null) return 0;
         return plugin.getRoomStorage().getAvailableRooms().size();
+    }
+
+    private static int countTotalRooms() {
+        HotelsPlugin plugin = HotelsPlugin.getInstance();
+        if (plugin == null) return 0;
+        return plugin.getRoomStorage().getRoomCount();
+    }
+
+    private static int countByStatus(HotelRoom.RoomStatus status) {
+        HotelsPlugin plugin = HotelsPlugin.getInstance();
+        if (plugin == null) return 0;
+        int count = 0;
+        for (HotelRoom room : plugin.getRoomStorage().getAllRooms()) {
+            if (room.getStatus() == status) {
+                count++;
+            }
+        }
+        return count;
     }
 
     public static void openRanking(Player player) {

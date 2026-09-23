@@ -1,5 +1,5 @@
 name: HotelsX
-version: '1.4.2'
+version: '1.4.3'
 main: com.hotels.HotelsPlugin
 api-version: '1.21'
 folia-supported: true

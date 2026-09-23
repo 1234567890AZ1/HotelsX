@@ -21,6 +21,8 @@ buildNumber.properties
 .project
 .classpath
 .settings/
+.trae-cn/
+.impeccable/
 
 # Eclipse
 bin/

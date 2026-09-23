@@ -1,48 +1,133 @@
 <!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HotelsX - 登录</title>
+<title>HotelsX · 管理员登录</title>
 <style>
+/* HotelsX Web 面板 · 白场 (WHITEFIELD) · 登录页 */
+:root{
+  --bg:#F4F4F2; --surface:#FFFFFF; --line:#E7E7E2; --line-strong:#D3D3CC;
+  --ink:#121211; --dim:#63635C; --faint:#9C9C94;
+  --accent:#1F35E0; --danger:#C0392B;
+  --f-body:"Instrument Sans","PingFang SC","HarmonyOS Sans SC","MiSans","Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC","Segoe UI Variable Text","Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono","SF Mono","Cascadia Code","Consolas","Menlo",ui-monospace,monospace;
+}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden;
-background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 45%,#4c1d95 100%);}
-body::before{content:'';position:absolute;width:520px;height:520px;background:radial-gradient(circle,rgba(102,126,234,.35),transparent 70%);top:-160px;right:-120px;border-radius:50%;pointer-events:none;}
-body::after{content:'';position:absolute;width:420px;height:420px;background:radial-gradient(circle,rgba(167,139,250,.28),transparent 70%);bottom:-140px;left:-100px;border-radius:50%;pointer-events:none;}
-.wrap{position:relative;z-index:1;width:100%;max-width:400px;animation:up .5s ease;}
-@keyframes up{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
-.box{background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-radius:20px;padding:40px 32px;box-shadow:0 25px 60px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25);}
-.brand{text-align:center;margin-bottom:28px;}
-.logo{width:64px;height:64px;margin:0 auto 14px;border-radius:18px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 24px rgba(102,126,234,.4);}
-.logo svg{width:34px;height:34px;fill:#fff;}
-.box h1{font-size:26px;font-weight:800;letter-spacing:1px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-.box .sub{color:#6b7280;font-size:13px;margin-top:6px;}
-.fg{margin-bottom:18px;}
-.fg label{display:block;font-size:13px;font-weight:600;margin-bottom:7px;color:#374151;}
+body{
+  font-family:var(--f-body);background:var(--bg);color:var(--ink);
+  min-height:100vh;display:flex;-webkit-font-smoothing:antialiased;
+}
+/* 左：墨黑场 */
+.brand{
+  flex:0 0 46%;background:var(--ink);color:#FFF;
+  display:flex;flex-direction:column;justify-content:space-between;
+  padding:44px 46px;position:relative;overflow:hidden;
+}
+.brand::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(to right,rgba(255,255,255,.045) 1px,transparent 1px),
+                   linear-gradient(to bottom,rgba(255,255,255,.045) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(ellipse at 20% 10%,#000 20%,transparent 78%);
+  -webkit-mask-image:radial-gradient(ellipse at 20% 10%,#000 20%,transparent 78%);
+}
+.brand-top,.brand-mid,.brand-foot{position:relative;z-index:1;}
+.wordmark{font-size:17px;font-weight:600;letter-spacing:-.02em;}
+.wordmark em{font-family:var(--f-mono);font-style:normal;font-size:10px;font-weight:400;color:#87877F;letter-spacing:0;margin-left:10px;vertical-align:middle;}
+.brand-mid h1{font-size:clamp(30px,3.4vw,44px);font-weight:600;letter-spacing:-.035em;line-height:1.14;}
+.brand-mid p{margin-top:16px;font-size:14px;color:#9A9A92;max-width:34ch;line-height:1.7;}
+.rule{width:44px;height:3px;background:var(--accent);margin-bottom:26px;}
+.brand-foot{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:#6E6E67;
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+}
+/* 右：表单场 */
+.panel{flex:1;display:flex;align-items:center;justify-content:center;padding:44px 32px;}
+.form-wrap{width:100%;max-width:352px;animation:enter .4s cubic-bezier(.2,0,0,1) both;}
+@keyframes enter{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.form-head h2{font-size:24px;font-weight:600;letter-spacing:-.03em;}
+.form-head p{font-size:12.5px;color:var(--faint);margin-top:6px;}
+.fg{margin-top:20px;}
+.fg:first-of-type{margin-top:28px;}
+.fg label{
+  display:block;font-family:var(--f-mono);font-size:10px;font-weight:500;
+  text-transform:uppercase;letter-spacing:.14em;color:var(--faint);margin-bottom:8px;
+}
 .iwrap{position:relative;}
-.iwrap input{width:100%;padding:12px 14px 12px 42px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;background:#f9fafb;transition:all .2s;color:#1f2937;}
-.iwrap input:focus{outline:none;border-color:#667eea;background:#fff;box-shadow:0 0 0 3px rgba(102,126,234,.15);}
-.iwrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;fill:#9ca3af;transition:fill .2s;pointer-events:none;}
-.iwrap input:focus+svg{fill:#667eea;}
-.btn-login{width:100%;padding:13px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;letter-spacing:6px;cursor:pointer;margin-top:10px;box-shadow:0 8px 20px rgba(102,126,234,.35);transition:all .25s;}
-.btn-login:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(102,126,234,.45);filter:brightness(1.06);}
-.btn-login:active{transform:translateY(0);box-shadow:0 4px 12px rgba(102,126,234,.3);}
-.err{background:#fef2f2;color:#dc2626;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:16px;display:none;border:1px solid #fecaca;}
-.foot{text-align:center;margin-top:24px;font-size:12px;color:#9ca3af;letter-spacing:.5px;}
-@media(max-width:480px){
-.box{padding:30px 24px;border-radius:16px;}
-.box h1{font-size:22px;}
-.logo{width:56px;height:56px;border-radius:15px;}
+.iwrap input{
+  width:100%;padding:11px 13px 11px 40px;border:1px solid var(--line-strong);
+  border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface);color:var(--ink);
+  transition:border-color .14s,box-shadow .14s;
+}
+.iwrap input::placeholder{color:var(--faint);opacity:1;}
+.iwrap input:hover{border-color:var(--faint);}
+.iwrap input:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px rgba(31,53,224,.16);}
+/* Chrome 自动填充：抹掉默认淡黄底，保持墨黑/纯白配色 */
+.iwrap input:-webkit-autofill,
+.iwrap input:-webkit-autofill:hover,
+.iwrap input:-webkit-autofill:focus{
+  -webkit-text-fill-color:var(--ink);
+  -webkit-box-shadow:0 0 0 1000px var(--surface) inset;
+  box-shadow:0 0 0 1000px var(--surface) inset;
+}
+.iwrap svg{
+  position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  width:16px;height:16px;fill:var(--faint);pointer-events:none;transition:fill .14s;
+}
+.iwrap input:focus+svg{fill:var(--ink);}
+.btn-login{
+  width:100%;margin-top:26px;padding:12px;border:1px solid var(--ink);border-radius:6px;
+  background:var(--ink);color:#FFF;font-family:inherit;font-size:14px;font-weight:500;
+  letter-spacing:.08em;cursor:pointer;transition:background .14s;
+}
+.btn-login:hover{background:#000;}
+.btn-login:active{transform:translateY(.5px);}
+.err{
+  display:none;margin-top:20px;padding:11px 13px;border-radius:6px;font-size:12.5px;
+  background:rgba(192,57,43,.07);border:1px solid rgba(192,57,43,.24);color:var(--danger);
+}
+.foot{
+  margin-top:30px;padding-top:18px;border-top:1px solid var(--line);
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--faint);
+}
+@media(max-width:860px){
+  body{flex-direction:column;}
+  .brand{flex:0 0 auto;padding:28px 26px;}
+  .brand-mid{padding:26px 0 10px;}
+  .brand-mid p{display:none;}
+  .brand-foot{display:none;}
+  .rule{width:32px;height:2px;margin-bottom:16px;}
+  .panel{padding:32px 26px 44px;align-items:flex-start;}
 }
 </style></head><body>
-<div class="wrap"><div class="box">
-<div class="brand">
-<h1>HotelsX</h1><p class="sub">酒店管理系统 · 管理员登录</p></div>
-<div id="err" class="err"></div>
-<form id="lf">
-<div class="fg"><label for="lgUser">用户名</label><div class="iwrap"><input type="text" id="lgUser" name="username" required placeholder="请输入用户名"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div></div>
-<div class="fg"><label for="lgPass">密码</label><div class="iwrap"><input type="password" id="lgPass" name="password" required placeholder="请输入密码"><svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-3 0H9V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2z"/></svg></div></div>
-<button type="submit" class="btn-login">登 录</button></form>
-<div class="foot">HotelsX v1.4.0 · 安全登录</div>
-</div></div>
+<section class="brand">
+  <div class="brand-top"><div class="wordmark">HotelsX<em>v1.4.3</em></div></div>
+  <div class="brand-mid">
+    <div class="rule"></div>
+    <h1>酒店运营<br>管理后台</h1>
+    <p>房间、合集、店铺、流水与提现 —— 一站式收拢在同一个面板里。</p>
+  </div>
+  <div class="brand-foot"><span>Admin Console</span><span>Secure Sign-in</span></div>
+</section>
+<main class="panel">
+  <div class="form-wrap">
+    <div class="form-head">
+      <h2>登录</h2>
+      <p>请输入管理员账号以继续</p>
+    </div>
+    <div id="err" class="err"></div>
+    <form id="lf">
+      <div class="fg"><label for="lgUser">用户名</label>
+        <div class="iwrap"><input type="text" id="lgUser" name="username" required autocomplete="username" placeholder="请输入用户名"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
+      </div>
+      <div class="fg"><label for="lgPass">密码</label>
+        <div class="iwrap"><input type="password" id="lgPass" name="password" required autocomplete="current-password" placeholder="请输入密码"><svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-3 0H9V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2z"/></svg></div>
+      </div>
+      <button type="submit" class="btn-login">登 录</button>
+    </form>
+    <div class="foot">HotelsX · 管理面板</div>
+  </div>
+</main>
 <script>
 document.getElementById('lf').addEventListener('submit',async function(e){
 e.preventDefault();const el=document.getElementById('err');el.style.display='none';

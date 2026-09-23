@@ -27,7 +27,10 @@ package com.hotels.web;
 import com.hotels.HotelsPlugin;
 import com.hotels.model.HotelRoom;
 import com.hotels.model.RoomCollection;
+import com.hotels.model.Shop;
+import com.hotels.model.ShopDelivery;
 import com.hotels.model.Transaction;
+import com.hotels.shop.ShopService;
 import com.hotels.util.SchedulerCompat;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -36,6 +39,8 @@ import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.plugin.Plugin;
 
 import javax.net.ssl.KeyManagerFactory;
@@ -198,6 +203,14 @@ public class WebServer {
         server.createContext("/api/ratings", new RatingsHandler());
         server.createContext("/api/escrow", new EscrowHandler());
         server.createContext("/api/escrow/withdraw", new EscrowWithdrawHandler());
+        // 店铺系统 API
+        server.createContext("/api/shops", new ShopsHandler());
+        server.createContext("/api/shops/containers", new ShopContainersHandler());
+        server.createContext("/api/shops/create", new ShopCreateHandler());
+        server.createContext("/api/shops/update", new ShopUpdateHandler());
+        server.createContext("/api/shops/restock", new ShopRestockHandler());
+        server.createContext("/api/shops/delete", new ShopDeleteHandler());
+        server.createContext("/api/shops/buy", new ShopBuyHandler());
     }
 
     /**
@@ -685,7 +698,7 @@ public class WebServer {
                 String errHtml = "<html><meta charset='UTF-8'><body style='font-family:sans-serif;padding:40px;'>"
                         + "<h2>HotelsX Web 面板加载失败</h2>"
                         + "<p style='color:red;'>" + WebHttp.escape(String.valueOf(e)) + "</p>"
-                        + "<pre style='background:#f3f4f6;padding:12px;border-radius:8px;overflow:auto;'>"
+                        + "<pre style='background:var(--c-surface-2);padding:12px;border-radius:8px;overflow:auto;'>"
                         + WebHttp.escape(WebHttp.stackTrace(e)) + "</pre></body></html>";
                 WebHttp.sendHtml(exchange, 500, errHtml);
             }
@@ -1527,6 +1540,353 @@ public class WebServer {
         }
     }
 
+    // ===== 店铺权限辅助 =====
+
+    /** 会话关联玩家 UUID（未关联返回 null） */
+    private String sessionPlayerUuid(Session session) {
+        if (session.minecraftName == null || session.minecraftName.isEmpty()) return null;
+        return Bukkit.getOfflinePlayer(session.minecraftName).getUniqueId().toString();
+    }
+
+    /** 是否可查看店铺：superadmin/admin 看全部，user 只看自己的 */
+    private boolean canViewShop(Session session, Shop shop) {
+        if ("superadmin".equals(session.role) || "admin".equals(session.role)) return true;
+        String uuid = sessionPlayerUuid(session);
+        return uuid != null && uuid.equalsIgnoreCase(shop.getOwnerUUID());
+    }
+
+    /** 是否可管理（编辑/补货/开关）店铺 */
+    private boolean canManageShop(Session session, Shop shop) {
+        if ("superadmin".equals(session.role) || "admin".equals(session.role)) return true;
+        String uuid = sessionPlayerUuid(session);
+        return uuid != null && uuid.equalsIgnoreCase(shop.getOwnerUUID());
+    }
+
+    /** 是否可删除店铺：superadmin 可删所有，admin 不可，user 只能删自己的 */
+    private boolean canDeleteShop(Session session, Shop shop) {
+        if ("superadmin".equals(session.role)) return true;
+        if ("admin".equals(session.role)) return false;
+        String uuid = sessionPlayerUuid(session);
+        return uuid != null && uuid.equalsIgnoreCase(shop.getOwnerUUID());
+    }
+
+    /** 解析 "world:x:y:z" 定位键，返回 [world, x, y, z] */
+    private Object[] parseLocKey(String key) {
+        if (key == null) return null;
+        String[] parts = key.split(":");
+        if (parts.length != 4) return null;
+        try {
+            return new Object[]{parts[0], Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), Integer.parseInt(parts[3])};
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** 发送店铺操作统一响应 */
+    private void shopResp(HttpExchange exchange, boolean ok, String message) throws IOException {
+        Map<String, Object> r = new HashMap<>();
+        r.put("success", ok);
+        r.put("message", message);
+        WebHttp.sendJson(exchange, 200, WebHttp.toJson(r));
+    }
+
+    /** 店铺列表 + 统计 */
+    private class ShopsHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!requireAuth(exchange)) return;
+            Session session = getSession(exchange);
+            if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
+            }
+            ShopService svc = plugin.getShopService();
+            List<Map<String, Object>> list = new ArrayList<>();
+            int enabledCount = 0;
+            double revenue = 0;
+            long sold = 0;
+            for (Shop shop : plugin.getShopStorage().getAllShops()) {
+                if (!canViewShop(session, shop)) continue;
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id", shop.getId());
+                m.put("name", shop.getDisplayNameSafe());
+                m.put("displayName", shop.getDisplayName() == null ? "" : shop.getDisplayName());
+                m.put("ownerName", shop.getOwnerName());
+                m.put("ownerUuid", shop.getOwnerUUID());
+                m.put("material", shop.getMaterial());
+                m.put("price", shop.getPrice());
+                m.put("mode", shop.getMode().name());
+                m.put("enabled", shop.isEnabled());
+                m.put("roomBlocked", svc.isRoomBlocked(shop));
+                m.put("revenue", Math.round(shop.getRevenue() * 100.0) / 100.0);
+                m.put("soldCount", shop.getSoldCount());
+                m.put("world", shop.getWorld());
+                m.put("x", shop.getX());
+                m.put("y", shop.getY());
+                m.put("z", shop.getZ());
+                if (shop.getMode() == Shop.ShopMode.AUTO) {
+                    Material mat = svc.matchMaterial(shop.getMaterial());
+                    m.put("stock", mat == null ? 0 : svc.countContainerItems(shop, mat));
+                } else {
+                    m.put("stock", shop.getStock());
+                }
+                if (shop.isEnabled() && !svc.isRoomBlocked(shop)) enabledCount++;
+                revenue += shop.getRevenue();
+                sold += shop.getSoldCount();
+                list.add(m);
+            }
+            Map<String, Object> stats = new LinkedHashMap<>();
+            stats.put("total", list.size());
+            stats.put("enabled", enabledCount);
+            stats.put("revenue", Math.round(revenue * 100.0) / 100.0);
+            stats.put("sold", sold);
+            stats.put("pendingDeliveries", plugin.getShopStorage().getPendingDeliveryCount());
+            Map<String, Object> r = new LinkedHashMap<>();
+            r.put("shops", list);
+            r.put("stats", stats);
+            WebHttp.sendJson(exchange, 200, WebHttp.toJson(r));
+        }
+    }
+
+    /** 可用容器列表（创建店铺用；user 只给自己的容器） */
+    private class ShopContainersHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!requireAuth(exchange)) return;
+            Session session = getSession(exchange);
+            Map<String, String> containers;
+            if ("user".equals(session.role)) {
+                String uuid = sessionPlayerUuid(session);
+                containers = uuid == null ? java.util.Collections.emptyMap()
+                        : plugin.getShopStorage().getContainersByOwner(uuid);
+            } else {
+                containers = plugin.getShopStorage().getAllContainers();
+            }
+            List<Map<String, Object>> list = new ArrayList<>();
+            for (Map.Entry<String, String> e : containers.entrySet()) {
+                Object[] p = parseLocKey(e.getKey());
+                if (p == null) continue;
+                OfflinePlayer op = Bukkit.getOfflinePlayer(UUID.fromString(e.getValue()));
+                boolean bound = plugin.getShopStorage().getShopAt(
+                        (String) p[0], (Integer) p[1], (Integer) p[2], (Integer) p[3]) != null;
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("locationKey", e.getKey());
+                m.put("world", p[0]);
+                m.put("x", p[1]);
+                m.put("y", p[2]);
+                m.put("z", p[3]);
+                m.put("ownerName", op.getName() == null ? e.getValue().substring(0, 8) : op.getName());
+                m.put("bound", bound);
+                list.add(m);
+            }
+            Map<String, Object> r = new LinkedHashMap<>();
+            r.put("containers", list);
+            WebHttp.sendJson(exchange, 200, WebHttp.toJson(r));
+        }
+    }
+
+    /** 创建店铺 */
+    private class ShopCreateHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!requireAuth(exchange)) return;
+            Session session = getSession(exchange);
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
+            }
+            if (!requireCsrf(exchange)) return;
+            Map<String, String> form = WebHttp.parseForm(WebHttp.readBody(exchange));
+            ShopService svc = plugin.getShopService();
+
+            if (!svc.isShopEnabled()) { shopResp(exchange, false, "店面系统当前未启用"); return; }
+            String loc = form.get("container");
+            Object[] p = parseLocKey(loc);
+            if (p == null) { shopResp(exchange, false, "容器定位无效"); return; }
+            String locKey = p[0] + ":" + p[1] + ":" + p[2] + ":" + p[3];
+            String ownerUuid = plugin.getShopStorage().getContainerOwner(locKey);
+            if (ownerUuid == null) { shopResp(exchange, false, "未发现此容器，请先由店主在游戏中放置容器"); return; }
+            // user 只能使用自己的容器
+            if ("user".equals(session.role)) {
+                String myUuid = sessionPlayerUuid(session);
+                if (myUuid == null) { shopResp(exchange, false, "当前账号未关联游戏内玩家名，无法创建店铺"); return; }
+                if (!myUuid.equalsIgnoreCase(ownerUuid)) { shopResp(exchange, false, "该容器不属于你，无法使用"); return; }
+            }
+            if (plugin.getShopStorage().getShopAt((String) p[0], (Integer) p[1], (Integer) p[2], (Integer) p[3]) != null) {
+                shopResp(exchange, false, "此容器已绑定店铺"); return;
+            }
+            // 商品
+            String materialName = form.get("material");
+            if (materialName == null || materialName.isBlank()) { shopResp(exchange, false, "请填写商品"); return; }
+            Material mat = svc.matchMaterial(materialName);
+            if (mat == null) { shopResp(exchange, false, "商品类型无效: " + materialName); return; }
+            // 价格
+            double price;
+            try { price = Double.parseDouble(form.getOrDefault("price", "0")); }
+            catch (NumberFormatException e) { shopResp(exchange, false, "价格无效"); return; }
+            if (price <= 0 || price > svc.getMaxPrice()) {
+                shopResp(exchange, false, "单价必须在 0 ~ " + (long) svc.getMaxPrice() + " 之间"); return;
+            }
+            // 模式
+            String modeStr = form.getOrDefault("mode", plugin.getConfig().getString("shop.default-mode", "AUTO")).toUpperCase();
+            Shop.ShopMode mode = "FIXED".equals(modeStr) ? Shop.ShopMode.FIXED : Shop.ShopMode.AUTO;
+            int stock = 0;
+            if (mode == Shop.ShopMode.FIXED) {
+                try { stock = Math.max(0, Integer.parseInt(form.getOrDefault("stock", "0"))); }
+                catch (NumberFormatException ignored) {}
+            }
+            // 数量上限
+            if (plugin.getShopStorage().getShopsByOwner(ownerUuid).size() >= svc.getMaxShopsPerPlayer()) {
+                shopResp(exchange, false, "店面数量已达上限（" + svc.getMaxShopsPerPlayer() + " 个）"); return;
+            }
+            // 房间关联
+            org.bukkit.Location loc2 = new org.bukkit.Location(
+                    Bukkit.getWorld((String) p[0]), (Integer) p[1], (Integer) p[2], (Integer) p[3]);
+            String roomId = svc.resolveRoomId(loc2);
+            if (!svc.isAllowInRooms() && roomId != null) {
+                shopResp(exchange, false, "配置不允许在房间内开店，请移到房间外"); return;
+            }
+
+            Shop shop = new Shop();
+            shop.setOwnerUUID(ownerUuid);
+            OfflinePlayer op = Bukkit.getOfflinePlayer(UUID.fromString(ownerUuid));
+            shop.setOwnerName(op.getName() == null ? ownerUuid.substring(0, 8) : op.getName());
+            shop.setDisplayName(form.get("name"));
+            shop.setWorld((String) p[0]);
+            shop.setX((Integer) p[1]);
+            shop.setY((Integer) p[2]);
+            shop.setZ((Integer) p[3]);
+            shop.setRoomId(roomId);
+            shop.setMaterial(mat.name());
+            shop.setPrice(price);
+            shop.setMode(mode);
+            shop.setStock(stock);
+            shop.setEnabled(false); // 默认停业，店主到面板手动开业
+
+            boolean ok = plugin.getShopStorage().createShop(shop);
+            if (!ok) { shopResp(exchange, false, "此容器已绑定店铺"); return; }
+            console.logConsole("Web创建店铺: " + shop.getDisplayNameSafe() + " 商品 " + mat.name()
+                    + " 单价 " + price + " 模式 " + shop.getMode().name());
+            Map<String, Object> r = new HashMap<>();
+            r.put("success", true);
+            r.put("message", "店铺已创建，默认停业状态，请到列表点击「开业」");
+            r.put("shopId", shop.getId());
+            WebHttp.sendJson(exchange, 200, WebHttp.toJson(r));
+        }
+    }
+
+    /** 更新店铺（名称/商品/价格/模式/库存/开关） */
+    private class ShopUpdateHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!requireAuth(exchange)) return;
+            Session session = getSession(exchange);
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
+            }
+            if (!requireCsrf(exchange)) return;
+            Map<String, String> form = WebHttp.parseForm(WebHttp.readBody(exchange));
+            String shopId = form.get("shopId");
+            Shop shop = plugin.getShopStorage().getShop(shopId);
+            if (shop == null) { shopResp(exchange, false, "店铺不存在"); return; }
+            if (!canManageShop(session, shop)) { shopResp(exchange, false, "无权操作此店铺"); return; }
+
+            String materialName = form.get("material");
+            if (materialName != null && !materialName.isBlank()) {
+                Material m = plugin.getShopService().matchMaterial(materialName);
+                if (m == null) { shopResp(exchange, false, "商品类型无效"); return; }
+                shop.setMaterial(m.name());
+            }
+            String priceStr = form.get("price");
+            if (priceStr != null && !priceStr.isBlank()) {
+                double price;
+                try { price = Double.parseDouble(priceStr); }
+                catch (NumberFormatException e) { shopResp(exchange, false, "价格无效"); return; }
+                if (price <= 0 || price > plugin.getShopService().getMaxPrice()) {
+                    shopResp(exchange, false, "单价必须在 0 ~ " + (long) plugin.getShopService().getMaxPrice() + " 之间"); return;
+                }
+                shop.setPrice(price);
+            }
+            if (form.containsKey("enabled")) shop.setEnabled(Boolean.parseBoolean(form.get("enabled")));
+            String modeStr = form.get("mode");
+            if (modeStr != null) {
+                shop.setMode("FIXED".equals(modeStr) ? Shop.ShopMode.FIXED : Shop.ShopMode.AUTO);
+            }
+            String stockStr = form.get("stock");
+            if (stockStr != null && !stockStr.isBlank() && shop.getMode() == Shop.ShopMode.FIXED) {
+                try { shop.setStock(Integer.parseInt(stockStr)); }
+                catch (NumberFormatException ignored) {}
+            }
+            if (form.containsKey("name")) shop.setDisplayName(form.get("name"));
+
+            plugin.getShopStorage().saveShop(shop);
+            shopResp(exchange, true, "店铺已更新");
+        }
+    }
+
+    /** FIXED 模式补货入库 */
+    private class ShopRestockHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!requireAuth(exchange)) return;
+            Session session = getSession(exchange);
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
+            }
+            if (!requireCsrf(exchange)) return;
+            Map<String, String> form = WebHttp.parseForm(WebHttp.readBody(exchange));
+            Shop shop = plugin.getShopStorage().getShop(form.get("shopId"));
+            if (shop == null) { shopResp(exchange, false, "店铺不存在"); return; }
+            if (!canManageShop(session, shop)) { shopResp(exchange, false, "无权操作此店铺"); return; }
+            ShopService.ShopResult r = plugin.getShopService().restock(shop);
+            shopResp(exchange, r.success(), r.message());
+        }
+    }
+
+    /** 删除店铺 */
+    private class ShopDeleteHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!requireAuth(exchange)) return;
+            Session session = getSession(exchange);
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
+            }
+            if (!requireCsrf(exchange)) return;
+            Map<String, String> form = WebHttp.parseForm(WebHttp.readBody(exchange));
+            Shop shop = plugin.getShopStorage().getShop(form.get("shopId"));
+            if (shop == null) { shopResp(exchange, false, "店铺不存在"); return; }
+            if (!canDeleteShop(session, shop)) { shopResp(exchange, false, "无权删除此店铺"); return; }
+            String name = shop.getDisplayNameSafe();
+            plugin.getShopStorage().removeShop(shop.getId());
+            console.logConsole("Web删除店铺: " + name);
+            shopResp(exchange, true, "店铺已删除: " + name);
+        }
+    }
+
+    /** 购买商品 */
+    private class ShopBuyHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!requireAuth(exchange)) return;
+            Session session = getSession(exchange);
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
+            }
+            if (!requireCsrf(exchange)) return;
+            Map<String, String> form = WebHttp.parseForm(WebHttp.readBody(exchange));
+            if (session.minecraftName == null || session.minecraftName.isEmpty()) {
+                shopResp(exchange, false, "当前账号未关联游戏内玩家名，无法购买"); return;
+            }
+            String shopId = form.get("shopId");
+            int amount;
+            try { amount = Integer.parseInt(form.getOrDefault("amount", "0")); }
+            catch (NumberFormatException e) { shopResp(exchange, false, "购买数量无效"); return; }
+            Shop shop = plugin.getShopStorage().getShop(shopId);
+            if (shop == null) { shopResp(exchange, false, "店铺不存在"); return; }
+            ShopService.ShopResult r = plugin.getShopService().purchase(shop, session.minecraftName, amount);
+            shopResp(exchange, r.success(), r.message());
+        }
+    }
+
     /**
      * SSE 实时推送：服务器状态每 1 秒推送一次（替代前端轮询）
      */
@@ -1637,6 +1997,403 @@ public class WebServer {
         return loadResource("web/login.html");
     }
 
+    /** 常用商品 datalist 建议 */
+    private String commonMaterials() {
+        String[] names = {"DIAMOND", "EMERALD", "GOLD_INGOT", "IRON_INGOT", "COAL", "REDSTONE",
+                "LAPIS_LAZULI", "OAK_LOG", "STONE", "NETHERITE_INGOT", "ENDER_PEARL", "BLAZE_ROD",
+                "BREAD", "COOKED_BEEF", "GOLDEN_APPLE", "TOTEM_OF_UNDYING", "PHANTOM_MEMBRANE", "SLIME_BALL"};
+        StringBuilder sb = new StringBuilder();
+        for (String n : names) {
+            sb.append("<option value=\"").append(n).append("\"></option>");
+        }
+        return sb.toString();
+    }
+
+    /** 构建店铺管理区块（服务端渲染，作为 dashboard 一个独立 section） */
+    private String buildShopSection(Session session) {
+        ShopService svc = plugin.getShopService();
+        boolean shopEnabled = svc.isShopEnabled();
+        String sessionUuid = sessionPlayerUuid(session);
+
+        int total = 0, enabledCount = 0;
+        double revenue = 0;
+        long sold = 0;
+        int pending = plugin.getShopStorage().getPendingDeliveryCount();
+
+        StringBuilder rows = new StringBuilder();
+        for (Shop shop : plugin.getShopStorage().getAllShops()) {
+            if (!canViewShop(session, shop)) continue;
+            total++;
+            if (shop.isEnabled() && !svc.isRoomBlocked(shop)) enabledCount++;
+            revenue += shop.getRevenue();
+            sold += shop.getSoldCount();
+
+            String status;
+            if (shop.isEnabled()) {
+                status = svc.isRoomBlocked(shop)
+                        ? "<span class='status-tag status-locked'>房间锁定</span>"
+                        : "<span class='status-tag status-available'>营业中</span>";
+            } else {
+                status = "<span class='status-tag status-maintenance'>停业</span>";
+            }
+            Material mat = svc.matchMaterial(shop.getMaterial());
+            int stock = shop.getMode() == Shop.ShopMode.AUTO
+                    ? (mat == null ? 0 : svc.countContainerItems(shop, mat))
+                    : shop.getStock();
+            boolean canManage = canManageShop(session, shop);
+            boolean canDelete = canDeleteShop(session, shop);
+            boolean canBuy = session.minecraftName != null && !session.minecraftName.isEmpty()
+                    && shop.isEnabled() && !svc.isRoomBlocked(shop)
+                    && (sessionUuid == null || !sessionUuid.equalsIgnoreCase(shop.getOwnerUUID()));
+
+            rows.append("<tr>")
+                    .append("<td>").append(WebHttp.escape(shop.getDisplayNameSafe())).append("</td>")
+                    .append("<td>").append(WebHttp.escape(shop.getOwnerName())).append("</td>")
+                    .append("<td>").append(WebHttp.escape(shop.getMaterial())).append("</td>")
+                    .append("<td>").append(String.format("%.2f", shop.getPrice())).append("</td>")
+                    .append("<td>").append(shop.getMode().name()).append("</td>")
+                    .append("<td>").append(stock).append(" 个</td>")
+                    .append("<td>").append(String.format("%.0f", shop.getRevenue()))
+                    .append(" / ").append(shop.getSoldCount()).append("</td>")
+                    .append("<td>").append(status).append("</td>")
+                    .append("<td>");
+            if (canBuy) {
+                rows.append("<button class='btn btn-primary btn-sm' onclick=\"buyShop('")
+                        .append(WebHttp.escapeJsAttr(shop.getId())).append("','")
+                        .append(WebHttp.escapeJsAttr(shop.getDisplayNameSafe())).append("')\">购买</button> ");
+            }
+            if (canManage) {
+                boolean nextEnabled = !shop.isEnabled() && !svc.isRoomBlocked(shop);
+                rows.append("<button class='btn btn-secondary btn-sm' onclick=\"toggleShop('")
+                        .append(WebHttp.escapeJsAttr(shop.getId())).append("',").append(nextEnabled).append(")\">")
+                        .append(shop.isEnabled() ? "停业" : "开业").append("</button> ");
+                rows.append("<button class='btn btn-secondary btn-sm' onclick=\"openEditShop('")
+                        .append(WebHttp.escapeJsAttr(shop.getId())).append("','")
+                        .append(WebHttp.escapeJsAttr(shop.getDisplayName() == null ? "" : shop.getDisplayName())).append("','")
+                        .append(WebHttp.escapeJsAttr(shop.getMaterial())).append("',")
+                        .append(shop.getPrice()).append(",'")
+                        .append(WebHttp.escapeJsAttr(shop.getMode().name())).append("',")
+                        .append(shop.getStock()).append(")\">编辑</button> ");
+                if (shop.getMode() == Shop.ShopMode.FIXED) {
+                    rows.append("<button class='btn btn-secondary btn-sm' onclick=\"restockShop('")
+                            .append(WebHttp.escapeJsAttr(shop.getId())).append("')\">补货入库</button> ");
+                }
+                if (canDelete) {
+                    rows.append("<button class='btn btn-danger btn-sm' onclick=\"delShop('")
+                            .append(WebHttp.escapeJsAttr(shop.getId())).append("','")
+                            .append(WebHttp.escapeJsAttr(shop.getDisplayNameSafe())).append("')\">删除</button>");
+                }
+            }
+            rows.append("</td></tr>");
+        }
+        String rowsHtml = rows.length() == 0
+                ? "<tr><td colspan='9' class='empty'>暂无店铺" + (shopEnabled ? "" : "（店面系统未启用）") + "</td></tr>"
+                : rows.toString();
+
+        // 可用（未绑定）容器下拉
+        Map<String, String> containers;
+        if ("user".equals(session.role)) {
+            containers = sessionUuid == null ? java.util.Collections.emptyMap()
+                    : plugin.getShopStorage().getContainersByOwner(sessionUuid);
+        } else {
+            containers = plugin.getShopStorage().getAllContainers();
+        }
+        StringBuilder contOptions = new StringBuilder();
+        for (Map.Entry<String, String> e : containers.entrySet()) {
+            Object[] p = parseLocKey(e.getKey());
+            if (p == null) continue;
+            boolean bound = plugin.getShopStorage().getShopAt(
+                    (String) p[0], (Integer) p[1], (Integer) p[2], (Integer) p[3]) != null;
+            if (bound) continue;
+            OfflinePlayer op = Bukkit.getOfflinePlayer(UUID.fromString(e.getValue()));
+            String ownerLabel = op.getName() == null ? e.getValue().substring(0, 8) : op.getName();
+            contOptions.append("<option value=\"").append(WebHttp.escape(e.getKey())).append("\">")
+                    .append(WebHttp.escape(e.getKey())).append("（").append(WebHttp.escape(ownerLabel)).append("）</option>");
+        }
+        String contHtml = contOptions.length() == 0
+                ? "<option value=''>暂无可用容器，请先由店主在游戏中放置箱子/木桶等容器</option>"
+                : contOptions.toString();
+
+        // 待领取队列
+        StringBuilder delRows = new StringBuilder();
+        for (ShopDelivery d : plugin.getShopStorage().getAllDeliveries()) {
+            String time = DateTimeFormatter.ofPattern("MM-dd HH:mm")
+                    .withZone(java.time.ZoneId.systemDefault()).format(Instant.ofEpochMilli(d.getCreatedAt()));
+            delRows.append("<tr>")
+                    .append("<td>").append(WebHttp.escape(d.getPlayerName())).append("</td>")
+                    .append("<td>").append(WebHttp.escape(d.getMaterial())).append("</td>")
+                    .append("<td>").append(d.getAmount()).append("</td>")
+                    .append("<td>").append(time).append("</td>")
+                    .append("<td><span class='status-tag status-maintenance'>待领取</span></td>")
+                    .append("</tr>");
+        }
+        String delHtml = pending == 0
+                ? "<tr><td colspan='5' class='empty'>暂无待领取物品</td></tr>"
+                : delRows.toString();
+
+        String cards = "<div class='stats'>"
+                + "<div class='card blue'><div class='icon'><svg viewBox='0 0 24 24'><path d='M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 10h16v2H4v-2zm0 4h16v2H4v-2z'/></svg></div><div class='label'>店铺总数</div><div class='value'>" + total + "</div></div>"
+                + "<div class='card green'><div class='icon'><svg viewBox='0 0 24 24'><path d='M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z'/></svg></div><div class='label'>营业中</div><div class='value'>" + enabledCount + "</div></div>"
+                + "<div class='card orange'><div class='icon'><svg viewBox='0 0 24 24'><path d='M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z'/></svg></div><div class='label'>累计营收</div><div class='value'>" + Math.round(revenue) + "</div></div>"
+                + "<div class='card purple'><div class='icon'><svg viewBox='0 0 24 24'><path d='M19 2H5c-1.1 0-2 .9-2 2v18l7-3 7 3V4c0-1.1-.9-2-2-2zm0 16l-5-2.18L9 18V5h10v13z'/></svg></div><div class='label'>待领取队列</div><div class='value'>" + pending + "</div></div>"
+                + "</div>";
+
+        String createForm = "<div class='section'><div class='section-title'>创建店铺</div>";
+        if (shopEnabled) {
+            createForm += "<div class='inline-form'>"
+                    + "<div><label for='scName'>店铺名（可选）</label><input type='text' id='scName' placeholder='店铺名'></div>"
+                    + "<div><label for='scContainer'>绑定容器</label><select id='scContainer'>" + contHtml + "</select></div>"
+                    + "<div><label for='scMaterial'>商品</label><input type='text' id='scMaterial' list='mcList' placeholder='如 DIAMOND'>"
+                    + "<datalist id='mcList'>" + commonMaterials() + "</datalist></div>"
+                    + "<div><label for='scPrice'>单价</label><input type='number' step='0.01' min='0.01' id='scPrice' placeholder='价格'></div>"
+                    + "<div><label for='scMode'>补货模式</label><select id='scMode' onchange='toggleStockInput()'>"
+                    + "<option value='AUTO'>AUTO（容器实时库存）</option><option value='FIXED'>FIXED（固定库存）</option></select></div>"
+                    + "<div id='stockWrap' style='display:none;'><label for='scStock'>初始库存</label><input type='number' min='0' id='scStock' value='0'></div>"
+                    + "<button class='btn btn-primary' onclick='createShop()'>创建店铺</button>"
+                    + "</div>";
+        } else {
+            createForm += "<p style='color:var(--c-danger-strong);'>店面系统当前已禁用（config.yml → shop.enabled 设为 true 后刷新）</p>";
+        }
+        createForm += "</div>";
+
+        return "<div id='shops' class='page-section'>"
+                + cards
+                + createForm
+                + "<div class='section'><div class='section-title'>店铺列表 <span class='badge'>" + total + " 个</span></div>"
+                + "<table><thead><tr><th>店铺</th><th>店主</th><th>商品</th><th>单价</th><th>模式</th><th>库存</th><th>营收/销量</th><th>状态</th><th>操作</th></tr></thead>"
+                + "<tbody>" + rowsHtml + "</tbody></table></div>"
+                + "<div class='section'><div class='section-title'>待领取队列 <span class='badge'>" + pending + " 条</span></div>"
+                + "<table><thead><tr><th>玩家</th><th>商品</th><th>数量</th><th>时间</th><th>状态</th></tr></thead>"
+                + "<tbody>" + delHtml + "</tbody></table></div>"
+                + "</div>";
+    }
+
+    /** 房间表格行（服务端渲染，供「房间列表」区块使用） */
+    private String buildRoomRows(Collection<HotelRoom> rooms, Session session) {
+        if (rooms.isEmpty()) {
+            return "<tr><td colspan='9' class='empty'>暂无房间</td></tr>";
+        }
+        StringBuilder rows = new StringBuilder();
+        for (HotelRoom r : rooms) {
+            String sc, st;
+            if (r.isLocked()) { sc = "status-locked"; st = "已锁定"; }
+            else {
+                sc = switch (r.getStatus()) {
+                    case OCCUPIED -> "status-occupied"; case AVAILABLE -> "status-available";
+                    case MAINTENANCE -> "status-maintenance";
+                };
+                st = switch (r.getStatus()) {
+                    case OCCUPIED -> "已入住"; case AVAILABLE -> "可入住";
+                    case MAINTENANCE -> "维护中";
+                };
+            }
+            rows.append("<tr>")
+                .append("<td><input type='checkbox' class='room-checkbox' value='").append(WebHttp.escape(r.getId())).append("' onchange='updateBatchToolbar()'></td>")
+                .append("<td>").append(WebHttp.escape(r.getId())).append("</td>")
+                .append("<td>").append(WebHttp.escape(r.getName() != null ? r.getName() : "")).append("</td>")
+                .append("<td>").append(WebHttp.escape(r.getOwnerName())).append("</td>")
+                .append("<td><span class='status-tag ").append(sc).append("'>").append(st).append("</span></td>")
+                .append("<td>").append(fmt(r.getCurrentPrice())).append("</td>")
+                .append("<td>").append(WebHttp.escape(r.getCurrentGuestName() != null ? r.getCurrentGuestName() : "-")).append("</td>")
+                .append("<td>").append(r.isLocked() ? "是" : "否").append("</td>")
+                .append("<td>");
+            boolean canManage = canManageRoom(session, r);
+            boolean canDelete = canDeleteRoom(session, r);
+            if (canManage) {
+                rows.append("<button class='btn btn-secondary btn-sm' onclick=\"openEdit('").append(WebHttp.escapeJsAttr(r.getId())).append("','").append(WebHttp.escapeJsAttr(r.getName() != null ? r.getName() : "")).append("',").append(r.getCurrentPrice()).append(",'").append(WebHttp.escapeJsAttr(r.getStatus().name())).append("',").append(r.isLocked()).append(")\">编辑</button> ");
+            }
+            if (canDelete) {
+                rows.append("<button class='btn btn-danger btn-sm' onclick=\"delRoom('").append(WebHttp.escapeJsAttr(r.getId())).append("')\">删除</button>");
+            }
+            if (!canManage && !canDelete) {
+                rows.append("<span style='color:var(--c-text-faint);font-size:12px'>无权操作</span>");
+            }
+            rows.append("</td></tr>");
+        }
+        return rows.toString();
+    }
+
+    /** 合集表格行 */
+    private String buildCollectionRows(Collection<RoomCollection> cols) {
+        if (cols.isEmpty()) {
+            return "<tr><td colspan='4' class='empty'>暂无合集</td></tr>";
+        }
+        StringBuilder rows = new StringBuilder();
+        for (RoomCollection c : cols) {
+            rows.append("<tr>")
+                .append("<td>").append(WebHttp.escape(c.getId())).append("</td>")
+                .append("<td>").append(WebHttp.escape(c.getName())).append("</td>")
+                .append("<td>").append(WebHttp.escape(c.getOwnerName())).append("</td>")
+                .append("<td>").append(c.getRoomIds().size()).append("</td></tr>");
+        }
+        return rows.toString();
+    }
+
+    /** 角色徽章（白场系统：实心墨底 / 钴蓝描边 / 中性灰） */
+    private String roleBadge(String role) {
+        return switch (role) {
+            case "superadmin" -> "<span class='badge badge-solid'>超级管理员</span>";
+            case "admin" -> "<span class='badge badge-accent'>管理员</span>";
+            default -> "<span class='badge'>普通用户</span>";
+        };
+    }
+
+    /** 侧栏「管理员/控制台/公告」入口（仅超级管理员） */
+    private String buildSuperadminNav(Session session) {
+        if (!"superadmin".equals(session.role)) return "";
+        return "<a href='#admins'><svg viewBox='0 0 24 24'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>管理员账号</a>" +
+                "<a href='#console'><svg viewBox='0 0 24 24'><path d='M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM8.9 14.83l-1.41 1.41L4 12.83l3.49-3.41 1.41 1.41L6.83 12l2.07 2.83zM15 16H9v-2h6v2z'/></svg>控制台</a>" +
+                "<a href='#broadcast'><svg viewBox='0 0 24 24'><path d='M20 4l-8 3v10l8 3V4zM10 7H4c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h2v3h2v-3h2l2 1V6l-2 1z'/></svg>公告系统</a>";
+    }
+
+    /** 管理员账号区块（仅超级管理员） */
+    private String buildAdminsSection(Session session) {
+        if (!"superadmin".equals(session.role)) return "";
+        StringBuilder rows = new StringBuilder();
+        for (AdminAccount a : admins) {
+            rows.append("<tr>")
+                .append("<td>").append(WebHttp.escape(a.username)).append("</td>")
+                .append("<td>").append(roleBadge(a.role)).append("</td>")
+                .append("<td>");
+            if (!a.username.equals(session.username)) {
+                rows.append("<button class='btn btn-danger btn-sm' onclick=\"delAdmin('").append(WebHttp.escapeJsAttr(a.username)).append("')\">删除</button>");
+            }
+            rows.append("</td></tr>");
+        }
+        return "<div id='admins' class='page-section'><div class='section'>" +
+                "<div class='section-title'>管理员账号 <span class='badge'>" + admins.size() + " 个</span></div>" +
+                "<div style='margin-bottom:12px;'><button class='btn btn-primary btn-sm' onclick='openAddAdmin()'>添加管理员</button></div>" +
+                "<table><thead><tr><th>用户名</th><th>角色</th><th>操作</th></tr></thead><tbody>" + rows + "</tbody></table>" +
+                "</div></div>";
+    }
+
+    /** 服务器控制台区块（仅超级管理员） */
+    private String buildConsoleSection(Session session) {
+        if (!"superadmin".equals(session.role)) return "";
+        return """
+                <div id='console' class='page-section'>
+                <div class='section'>
+                <div class='section-title'>服务器控制台
+                <div>
+                <button class='btn btn-secondary btn-sm' onclick='clearConsole()'>清空</button>
+                <button class='btn btn-secondary btn-sm' onclick='refreshConsole()'>刷新</button>
+                </div></div>
+                <div id='consoleOutput' style='height:420px;overflow-y:auto;white-space:pre-wrap;'></div>
+                <div style='margin-top:14px;display:flex;gap:8px;'>
+                <label for='consoleCmd' style='display:none;'>控制台命令</label>
+                <input type='text' id='consoleCmd' aria-label='输入控制台命令' placeholder='输入命令，回车执行...' style='flex:1;' onkeydown='if(event.key==="Enter")execConsole()'>
+                <button class='btn btn-primary' onclick='execConsole()'>执行</button>
+                </div>
+                </div></div>
+                """;
+    }
+
+    /** 公告系统区块（仅超级管理员） */
+    private String buildBroadcastSection(Session session) {
+        if (!"superadmin".equals(session.role)) return "";
+        return """
+                <div id='broadcast' class='page-section'>
+                <div class='section'>
+                <div class='section-title'>公告系统</div>
+                <div class='form-group'><label for='bcType'>公告类型</label>
+                <select id='bcType' onchange='toggleBcPlayer()'>
+                <option value='chat'>聊天消息（显示在聊天栏）</option>
+                <option value='title'>标题（屏幕中央大字）</option>
+                <option value='actionbar'>快捷栏消息（物品栏上方）</option>
+                </select></div>
+                <div class='form-group'><label for='bcTarget'>发送目标</label>
+                <select id='bcTarget' onchange='toggleBcPlayer()'>
+                <option value='all'>全服玩家</option>
+                <option value='player'>指定玩家</option>
+                </select></div>
+                <div class='form-group' id='bcPlayerGroup' style='display:none;'><label for='bcPlayer'>玩家名</label>
+                <input type='text' id='bcPlayer' placeholder='输入在线玩家名'></div>
+                <div class='form-group'><label for='bcMessage'>公告内容（支持 &a &b &c 等颜色代码）</label>
+                <textarea id='bcMessage' rows='6' placeholder='输入公告内容...' style='width:100%;resize:vertical;'></textarea></div>
+                <button class='btn btn-primary' onclick='sendBroadcast()'>发送公告</button>
+                </div></div>
+                """;
+    }
+
+    /** 经济流水区块 */
+    private String buildTransactionsSection() {
+        return """
+                <div id='transactions' class='page-section'>
+                <div class='section'>
+                <div class='section-title'>经济流水
+                <div>
+                <label for='txFilter' style='display:none;'>流水类型</label>
+                <select id='txFilter' aria-label='流水类型筛选' onchange='renderTxPage()'>
+                <option value='all'>全部类型</option>
+                <option value='CHECKIN_PAY'>付款</option>
+                <option value='CHECKIN_RECV'>收款</option>
+                <option value='EXTEND_PAY'>续费</option>
+                </select>
+                <label for='txSearch' style='display:none;'>流水搜索</label>
+                <input type='text' id='txSearch' aria-label='搜索流水的玩家或房间' placeholder='搜索玩家/房间...' onkeyup='filterTx()' style='margin-left:6px;'>
+                <button class='btn btn-secondary btn-sm' onclick='loadTransactions()' style='margin-left:6px;'>刷新</button>
+                </div></div>
+                <div id='txStats' class='stats'></div>
+                <table><thead><tr><th>时间</th><th>类型</th><th>玩家</th><th>房间</th><th style='text-align:right;'>金额</th><th>备注</th></tr></thead>
+                <tbody id='txTbody'><tr><td colspan='6' style='text-align:center;color:var(--c-text-faint);padding:30px;'>加载中...</td></tr></tbody></table>
+                <div id='txPager' style='margin-top:12px;display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-wrap:wrap;'></div>
+                </div></div>
+                """;
+    }
+
+    /** 评分评价区块 */
+    private String buildRatingsSection() {
+        return """
+                <div id='ratings' class='page-section'>
+                <div class='section'>
+                <div class='section-title'>评分评价
+                <div>
+                <button class='btn btn-secondary btn-sm' onclick='loadRatings()'>刷新</button>
+                </div></div>
+                <div id='rtStats' class='stats'></div>
+                <div class='sub-title'>房间评分排行</div>
+                <table><thead><tr><th>房间</th><th>房主</th><th style='text-align:center;'>平均分</th><th style='text-align:center;'>评分数</th></tr></thead>
+                <tbody id='rtRoomStats'><tr><td colspan='4' style='text-align:center;color:var(--c-text-faint);padding:30px;'>加载中...</td></tr></tbody></table>
+                <div class='sub-title'>全部评价</div>
+                <table><thead><tr><th>时间</th><th>房间</th><th>评分人</th><th style='text-align:center;'>评分</th><th>评语</th></tr></thead>
+                <tbody id='rtTbody'><tr><td colspan='5' style='text-align:center;color:var(--c-text-faint);padding:30px;'>加载中...</td></tr></tbody></table>
+                </div></div>
+                """;
+    }
+
+    /** 收益提现区块 */
+    private String buildEscrowSection() {
+        return """
+                <div id='escrow' class='page-section'>
+                <div class='section'>
+                <div class='section-title'>收益提现
+                <div>
+                <button class='btn btn-secondary btn-sm' onclick='loadEscrow()'>刷新</button>
+                </div></div>
+                <div id='escModeBar' class='alert-bar'></div>
+                <div id='escStats' class='stats'></div>
+                <div class='sub-title'>房主收益</div>
+                <table><thead><tr><th>房主</th><th style='text-align:right;'>累计收益</th><th style='text-align:right;'>已提现</th><th style='text-align:right;'>待提现</th><th style='text-align:center;'>操作</th></tr></thead>
+                <tbody id='escTbody'><tr><td colspan='5' style='text-align:center;color:var(--c-text-faint);padding:30px;'>加载中...</td></tr></tbody></table>
+                <div class='sub-title'>提现记录</div>
+                <table><thead><tr><th>时间</th><th>玩家</th><th style='text-align:right;'>金额</th></tr></thead>
+                <tbody id='escWTbody'><tr><td colspan='3' style='text-align:center;color:var(--c-text-faint);padding:30px;'>加载中...</td></tr></tbody></table>
+                </div></div>
+                """;
+    }
+
+    /** 按 token → value 顺序替换模板占位符（value 中的 $ 与 \ 均安全处理） */
+    private String applyTokens(String html, String... kv) {
+        for (int i = 0; i + 1 < kv.length; i += 2) {
+            html = html.replace(kv[i], java.util.regex.Matcher.quoteReplacement(kv[i + 1]));
+        }
+        return html;
+    }
+
+    private static String num(long v) { return Long.toString(v); }
+
+    private static String fmt(double v) { return String.format("%.2f", v); }
+
     private String buildDashboard(Session session) {
         Collection<HotelRoom> rooms = plugin.getRoomStorage().getAllRooms();
         Collection<RoomCollection> cols = plugin.getRoomStorage().getAllCollections();
@@ -1656,222 +2413,72 @@ public class WebServer {
         long maxMem = rt.maxMemory() / (1024 * 1024);
         int memPct = maxMem > 0 ? (int)((usedMem * 100) / maxMem) : 0;
 
-        StringBuilder roomsHtml = new StringBuilder();
-        if (rooms.isEmpty()) {
-            roomsHtml.append("<tr><td colspan='9' class='empty'>暂无房间</td></tr>");
-        } else {
-            for (HotelRoom r : rooms) {
-                String sc, st;
-                if (r.isLocked()) { sc="status-locked"; st="已锁定"; }
-                else {
-                    sc = switch (r.getStatus()) {
-                        case OCCUPIED -> "status-occupied"; case AVAILABLE -> "status-available";
-                        case MAINTENANCE -> "status-maintenance";
-                    };
-                    st = switch (r.getStatus()) {
-                        case OCCUPIED -> "已入住"; case AVAILABLE -> "可入住";
-                        case MAINTENANCE -> "维护中";
-                    };
-                }
-                roomsHtml.append("<tr>")
-                    .append("<td><input type='checkbox' class='room-checkbox' value='").append(WebHttp.escape(r.getId())).append("' onchange='updateBatchToolbar()'></td>")
-                    .append("<td>").append(WebHttp.escape(r.getId())).append("</td>")
-                    .append("<td>").append(WebHttp.escape(r.getName()!=null?r.getName():"")).append("</td>")
-                    .append("<td>").append(WebHttp.escape(r.getOwnerName())).append("</td>")
-                    .append("<td><span class='status-tag ").append(sc).append("'>").append(st).append("</span></td>")
-                    .append("<td>").append(String.format("%.2f",r.getCurrentPrice())).append("</td>")
-                    .append("<td>").append(WebHttp.escape(r.getCurrentGuestName()!=null?r.getCurrentGuestName():"-")).append("</td>")
-                    .append("<td>").append(r.isLocked()?"是":"否").append("</td>")
-                    .append("<td>");
-                boolean canManage = canManageRoom(session, r);
-                boolean canDelete = canDeleteRoom(session, r);
-                if (canManage) {
-                    roomsHtml.append("<button class='btn btn-secondary btn-sm' onclick=\"openEdit('").append(WebHttp.escapeJsAttr(r.getId())).append("','").append(WebHttp.escapeJsAttr(r.getName()!=null?r.getName():"")).append("',").append(r.getCurrentPrice()).append(",'").append(WebHttp.escapeJsAttr(r.getStatus().name())).append("',").append(r.isLocked()).append(")\">编辑</button> ");
-                }
-                if (canDelete) {
-                    roomsHtml.append("<button class='btn btn-danger btn-sm' onclick=\"delRoom('").append(WebHttp.escapeJsAttr(r.getId())).append("')\">删除</button>");
-                }
-                if (!canManage && !canDelete) {
-                    roomsHtml.append("<span style='color:#999;font-size:12px'>无权操作</span>");
-                }
-                roomsHtml.append("</td></tr>");
-            }
-        }
+        String roomsHtml = buildRoomRows(rooms, session);
 
-        StringBuilder colsHtml = new StringBuilder();
-        if (cols.isEmpty()) {
-            colsHtml.append("<tr><td colspan='4' class='empty'>暂无合集</td></tr>");
-        } else {
-            for (RoomCollection c : cols) {
-                colsHtml.append("<tr>")
-                    .append("<td>").append(WebHttp.escape(c.getId())).append("</td>")
-                    .append("<td>").append(WebHttp.escape(c.getName())).append("</td>")
-                    .append("<td>").append(WebHttp.escape(c.getOwnerName())).append("</td>")
-                    .append("<td>").append(c.getRoomIds().size()).append("</td></tr>");
-            }
-        }
+        String colsHtml = buildCollectionRows(cols);
 
-        StringBuilder adminRows = new StringBuilder();
-        for (AdminAccount a : admins) {
-            adminRows.append("<tr>")
-                .append("<td>").append(WebHttp.escape(a.username)).append("</td>")
-                .append("<td>").append(switch (a.role) {
-                    case "superadmin" -> "<span class='badge'>超级管理员</span>";
-                    case "admin" -> "<span class='badge' style='background:#667eea'>管理员</span>";
-                    default -> "<span class='badge' style='background:#6b7280'>普通用户</span>";
-                }).append("</td>")
-                .append("<td>");
-            if ("superadmin".equals(session.role) && !a.username.equals(session.username)) {
-                adminRows.append("<button class='btn btn-danger btn-sm' onclick=\"delAdmin('").append(WebHttp.escapeJsAttr(a.username)).append("')\">删除</button>");
-            }
-            adminRows.append("</td></tr>");
-        }
+        // 管理员行由 buildAdminsSection 内部渲染（仅超级管理员可见）
 
-        String adminSection = "";
-        String adminNav = "";
-        String consoleSection = "";
-        String broadcastSection = "";
-        String transactionsSection;
-        String ratingsSection = "";
-        String escrowSection = "";
-        if ("superadmin".equals(session.role)) {
-            adminNav = "<a href='#admins'><svg viewBox='0 0 24 24'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>管理员账号</a>" +
-                "<a href='#console'><svg viewBox='0 0 24 24'><path d='M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM8.9 14.83l-1.41 1.41L4 12.83l3.49-3.41 1.41 1.41L6.83 12l2.07 2.83zM15 16H9v-2h6v2z'/></svg>控制台</a>" +
-                "<a href='#broadcast'><svg viewBox='0 0 24 24'><path d='M20 4l-8 3v10l8 3V4zM10 7H4c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h2v3h2v-3h2l2 1V6l-2 1z'/></svg>公告系统</a>";
-            adminSection = "<div id='admins' class='page-section'><div class='section'>" +
-                "<div class='section-title'>管理员账号 <span class='badge'>" + admins.size() + " 个</span></div>" +
-                "<div style='margin-bottom:12px;'><button class='btn btn-primary btn-sm' onclick='openAddAdmin()'>添加管理员</button></div>" +
-                "<table><thead><tr><th>用户名</th><th>角色</th><th>操作</th></tr></thead><tbody>" + adminRows + "</tbody></table>" +
-                "</div></div>";
-            broadcastSection = """
-                <div id='broadcast' class='page-section'>
-                <div class='section'>
-                <div class='section-title'>公告系统</div>
-                <div class='form-group'><label for='bcType'>公告类型</label>
-                <select id='bcType' onchange='toggleBcPlayer()'>
-                <option value='chat'>聊天消息（显示在聊天栏）</option>
-                <option value='title'>标题（屏幕中央大字）</option>
-                <option value='actionbar'>快捷栏消息（物品栏上方）</option>
-                </select></div>
-                <div class='form-group'><label for='bcTarget'>发送目标</label>
-                <select id='bcTarget' onchange='toggleBcPlayer()'>
-                <option value='all'>全服玩家</option>
-                <option value='player'>指定玩家</option>
-                </select></div>
-                <div class='form-group' id='bcPlayerGroup' style='display:none;'><label for='bcPlayer'>玩家名</label>
-                <input type='text' id='bcPlayer' placeholder='输入在线玩家名'></div>
-                <div class='form-group'><label for='bcMessage'>公告内容（支持 &a &b &c 等颜色代码）</label>
-                <textarea id='bcMessage' rows='6' placeholder='输入公告内容...' style='width:100%;padding:12px 16px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;resize:vertical;'></textarea></div>
-                <button class='btn btn-primary' onclick='sendBroadcast()'>发送公告</button>
-                </div></div>
-                """;
-            consoleSection = """
-                <div id='console' class='page-section'>
-                <div class='section'>
-                <div class='section-title'>服务器控制台
-                <div>
-                <button class='btn btn-secondary btn-sm' onclick='clearConsole()'>清空</button>
-                <button class='btn btn-secondary btn-sm' onclick='refreshConsole()'>刷新</button>
-                </div></div>
-                <div id='consoleOutput' style='background:#1e1e2e;color:#cdd6f4;font-family:Consolas,"Courier New",monospace;font-size:12px;padding:12px;border-radius:8px;height:400px;overflow-y:auto;white-space:pre-wrap;line-height:1.5;border:1px solid #313244;'></div>
-                <div style='margin-top:12px;display:flex;gap:8px;'>
-                <label for='consoleCmd' style='display:none;'>控制台命令</label>
-                <input type='text' id='consoleCmd' aria-label='输入控制台命令' placeholder='输入命令，回车执行...' style='flex:1;padding:10px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;font-family:Consolas,"Courier New",monospace;' onkeydown='if(event.key==="Enter")execConsole()'>
-                <button class='btn btn-primary' onclick='execConsole()'>执行</button>
-                </div>
-                </div></div>
-                """;
-        }
+        String adminNav = buildSuperadminNav(session);
+        String adminSection = buildAdminsSection(session);
+        String consoleSection = buildConsoleSection(session);
+        String broadcastSection = buildBroadcastSection(session);
+        String transactionsSection = buildTransactionsSection();
+        String ratingsSection = buildRatingsSection();
+        String escrowSection = buildEscrowSection();
+        // 店铺管理区块（所有角色可见，user 过滤为自己的店铺）
+        String shopSection = buildShopSection(session);
 
-        transactionsSection = """
-                <div id='transactions' class='page-section'>
-                <div class='section'>
-                <div class='section-title'>经济流水
-                <div>
-                <label for='txFilter' style='display:none;'>流水类型</label>
-                <select id='txFilter' aria-label='流水类型筛选' onchange='renderTxPage()' style='padding:6px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;'>
-                <option value='all'>全部类型</option>
-                <option value='CHECKIN_PAY'>付款</option>
-                <option value='CHECKIN_RECV'>收款</option>
-                <option value='EXTEND_PAY'>续费</option>
-                </select>
-                <label for='txSearch' style='display:none;'>流水搜索</label>
-                <input type='text' id='txSearch' aria-label='搜索流水的玩家或房间' placeholder='搜索玩家/房间...' onkeyup='filterTx()' style='margin-left:6px;padding:6px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;width:200px;'>
-                <button class='btn btn-secondary btn-sm' onclick='loadTransactions()' style='margin-left:6px;'>刷新</button>
-                </div></div>
-                <div id='txStats' style='display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px;'></div>
-                <table><thead><tr><th>时间</th><th>类型</th><th>玩家</th><th>房间</th><th style='text-align:right;'>金额</th><th>备注</th></tr></thead>
-                <tbody id='txTbody'><tr><td colspan='6' style='text-align:center;color:#999;padding:30px;'>加载中...</td></tr></tbody></table>
-                <div id='txPager' style='margin-top:12px;display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-wrap:wrap;'></div>
-                </div></div>
-                """;
-
-        ratingsSection = """
-                <div id='ratings' class='page-section'>
-                <div class='section'>
-                <div class='section-title'>评分评价
-                <div>
-                <button class='btn btn-secondary btn-sm' onclick='loadRatings()'>刷新</button>
-                </div></div>
-                <div id='rtStats' style='display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px;'></div>
-                <div class='sub-title'>房间评分排行</div>
-                <table><thead><tr><th>房间</th><th>房主</th><th style='text-align:center;'>平均分</th><th style='text-align:center;'>评分数</th></tr></thead>
-                <tbody id='rtRoomStats'><tr><td colspan='4' style='text-align:center;color:#999;padding:30px;'>加载中...</td></tr></tbody></table>
-                <div class='sub-title'>全部评价</div>
-                <table><thead><tr><th>时间</th><th>房间</th><th>评分人</th><th style='text-align:center;'>评分</th><th>评语</th></tr></thead>
-                <tbody id='rtTbody'><tr><td colspan='5' style='text-align:center;color:#999;padding:30px;'>加载中...</td></tr></tbody></table>
-                </div></div>
-                """;
-
-        escrowSection = """
-                <div id='escrow' class='page-section'>
-                <div class='section'>
-                <div class='section-title'>收益提现
-                <div>
-                <button class='btn btn-secondary btn-sm' onclick='loadEscrow()'>刷新</button>
-                </div></div>
-                <div id='escModeBar' class='alert-bar'></div>
-                <div id='escStats' style='display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px;'></div>
-                <div class='sub-title'>房主收益</div>
-                <table><thead><tr><th>房主</th><th style='text-align:right;'>累计收益</th><th style='text-align:right;'>已提现</th><th style='text-align:right;'>待提现</th><th style='text-align:center;'>操作</th></tr></thead>
-                <tbody id='escTbody'><tr><td colspan='5' style='text-align:center;color:#999;padding:30px;'>加载中...</td></tr></tbody></table>
-                <div class='sub-title'>提现记录</div>
-                <table><thead><tr><th>时间</th><th>玩家</th><th style='text-align:right;'>金额</th></tr></thead>
-                <tbody id='escWTbody'><tr><td colspan='3' style='text-align:center;color:#999;padding:30px;'>加载中...</td></tr></tbody></table>
-                </div></div>
-                """;
-
-        String roleTag = switch (session.role) {
-            case "superadmin" -> "<span class='badge'>超级管理员</span>";
-            case "admin" -> "<span class='badge' style='background:#667eea'>管理员</span>";
-            default -> "<span class='badge' style='background:#6b7280'>普通用户</span>";
-        };
+        String roleTag = roleBadge(session.role);
         double onlinePct = (online * 100.0) / Math.max(maxP, 1);
         String tpsColor = tps >= 19.0 ? "green" : "orange";
-        String memColor = memPct >= 80 ? "orange" : (memPct >= 60 ? "orange" : "green");
+        String memColor = memPct >= 60 ? "orange" : "green";
         String mcVer = Bukkit.getBukkitVersion();
         String srvVer = Bukkit.getVersion();
         int pluginCount = Bukkit.getPluginManager().getPlugins().length;
+        String upText = WebHttp.formatUptime(uptime);
 
-        return loadResource("web/dashboard.html").formatted(
-                        commonCSS(), adminNav,
-                        WebHttp.escape(session.username), roleTag,
-                        online, maxP, onlinePct,
-                        tps, tpsColor, Math.min(tps * 100, 100),
-                        usedMem, maxMem, memPct, memColor, memPct,
-                        WebHttp.formatUptime(uptime),
-                        avail, occ, locked, maint, cols.size(),
-                        srvVer, mcVer, tps, online, maxP,
-                        usedMem, maxMem, memPct,
-                        WebHttp.formatUptime(uptime), pluginCount,
-                        total, roomsHtml,
-                        cols.size(), colsHtml,
-                        transactionsSection,
-                        ratingsSection,
-                        escrowSection,
-                        adminSection,
-                        consoleSection,
-                        broadcastSection
-                ).replace("__CSRF_TOKEN__", session.csrfToken);
+        // 命名 token 注入：取代 String.format 位置参数，避免顺序耦合
+        return applyTokens(loadResource("web/dashboard.html"),
+                "<!--HX_CSS-->", commonCSS(),
+                "<!--HX_NAV-->", adminNav,
+                "<!--HX_USERNAME-->", WebHttp.escape(session.username),
+                "<!--HX_ROLE_TAG-->", roleTag,
+                "<!--HX_ONLINE_SUM-->", online + " / " + maxP,
+                "<!--HX_ONLINE_PCT-->", num(Math.round(onlinePct)),
+                "<!--HX_TPS-->", fmt(tps),
+                "<!--HX_TPS_COLOR-->", tpsColor,
+                "<!--HX_TPS_PCT-->", num(Math.min(Math.round(tps * 100), 100L)),
+                "<!--HX_USED_MEM-->", num(usedMem),
+                "<!--HX_MAX_MEM-->", num(maxMem),
+                "<!--HX_MEM_PCT-->", num(memPct),
+                "<!--HX_MEM_COLOR-->", memColor,
+                "<!--HX_MEM_PCT2-->", num(memPct),
+                "<!--HX_UPTIME-->", upText,
+                "<!--HX_AVAIL-->", num(avail),
+                "<!--HX_OCC-->", num(occ),
+                "<!--HX_LOCKED-->", num(locked),
+                "<!--HX_MAINT-->", num(maint),
+                "<!--HX_COL_COUNT-->", num(cols.size()),
+                "<!--HX_SRV_VER-->", WebHttp.escape(srvVer),
+                "<!--HX_MC_VER-->", WebHttp.escape(mcVer),
+                "<!--HX_TPS2-->", fmt(tps),
+                "<!--HX_ONLINE2-->", online + " / " + maxP,
+                "<!--HX_MEM2-->", usedMem + " MB / " + maxMem + " MB (" + memPct + "%)",
+                "<!--HX_UPTIME2-->", upText,
+                "<!--HX_PLUGINS-->", num(pluginCount),
+                "<!--HX_ROOM_COUNT-->", num(total),
+                "<!--HX_ROOMS_BODY-->", roomsHtml,
+                "<!--HX_COL_COUNT2-->", num(cols.size()),
+                "<!--HX_COLS_BODY-->", colsHtml,
+                "<!--HX_SECTION_TRANSACTIONS-->", transactionsSection,
+                "<!--HX_SECTION_RATINGS-->", ratingsSection,
+                "<!--HX_SECTION_ESCROW-->", escrowSection,
+                "<!--HX_SECTION_SHOPS-->", shopSection,
+                "<!--HX_SECTION_ADMINS-->", adminSection,
+                "<!--HX_SECTION_CONSOLE-->", consoleSection,
+                "<!--HX_SECTION_BROADCAST-->", broadcastSection,
+                "__CSRF_TOKEN__", session.csrfToken
+        );
     }
 }

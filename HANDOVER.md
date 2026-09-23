@@ -1,7 +1,7 @@
 # HotelsX 项目交接文档
 
 文档更新日期：2026-09-10
-项目版本：1.4.2
+项目版本：1.4.3
 
 ---
 
@@ -30,7 +30,7 @@ HotelsX 是一个 Bukkit/Spigot/Paper 服务器端的酒店房间管理插件。
 ```text
 mvn compile        # 仅编译
 mvn test           # 运行全部单元测试（47 个）
-mvn clean package  # 清理并打包，输出 target/HotelsX-1.4.2.jar
+mvn clean package  # 清理并打包，输出 target/HotelsX-1.4.3.jar
 ```
 
 注意：pom.xml 中的 surefire 配置了 `useModulePath=false` 和 `--add-modules=ALL-SYSTEM`，这是为了解决自定义 JDK 环境下 JUnit Platform 无法发现 TestEngine 的问题，请勿随意删除。
@@ -231,7 +231,7 @@ protection:
 6. YAML 读写必须以 UTF-8 编码（中文支持）
 7. plugin.yml 使用 soft-depend: ['Vault']，禁止改为 depend
 8. 禁止引入 PlaceholderAPI 相关文件/依赖
-9. 项目版本固定为 1.4.2
+9. 项目版本固定为 1.4.3
 10. `/ht elevator` 仅 OP 或 hotels.admin 可执行，控制全局电梯状态
 11. 玩家可同时入住多个房间；/ht checkout 支持可选房间 ID；/ht checkedin 或 /ht stays 显示全部在住房间
 12. 旋转预设应用前必须做冲突检测（房间已有方块需 confirm），应用前自动备份，支持 /ht preset undo 回滚
@@ -243,8 +243,8 @@ protection:
 - 远程仓库：`hotelsx` → https://github.com/1234567890AZ1/HotelsX.git（主推送目标）
 - 远程仓库：`origin` → https://github.com/1234567890AZ1/Hotels.git（旧仓库）
 - 分支：master（已推送到 hotelsx/master 与 hotelsx/main）
-- 最近提交：c1e179b feat: v1.4.2 - Web管理面板、门禁系统、Folia兼容性与安全加固
-- 版本历史：1.4.2 包含 — 旋转装修预设、冲突检测与回滚、入住欢迎效果、Web 面板重构（模板资源化 + 类拆分）、PBKDF2 密码哈希、Folia 兼容
+- 最近提交：c1e179b feat: v1.4.3 - Web管理面板、门禁系统、Folia兼容性与安全加固
+- 版本历史：1.4.3 包含 — 旋转装修预设、冲突检测与回滚、入住欢迎效果、Web 面板重构（模板资源化 + 类拆分）、PBKDF2 密码哈希、Folia 兼容
 
 ---
 

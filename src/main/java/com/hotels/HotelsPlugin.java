@@ -32,14 +32,17 @@ import com.hotels.listener.GUIListener;
 import com.hotels.listener.RoomGuardListener;
 import com.hotels.listener.RoomProtectListener;
 import com.hotels.listener.SelectionListener;
+import com.hotels.listener.ShopContainerListener;
 import com.hotels.model.HotelRoom;
 import com.hotels.model.RoomCollection;
 import com.hotels.preset.PresetManager;
 import com.hotels.selection.SelectionManager;
+import com.hotels.shop.ShopService;
 import com.hotels.storage.EscrowStorage;
 import com.hotels.storage.PresetStorage;
 import com.hotels.storage.RatingStorage;
 import com.hotels.storage.RoomStorage;
+import com.hotels.storage.ShopStorage;
 import com.hotels.storage.TransactionStorage;
 import com.hotels.util.SchedulerCompat;
 import com.hotels.web.WebServer;
@@ -59,12 +62,15 @@ public class HotelsPlugin extends JavaPlugin {
     private RatingStorage ratingStorage;
     private EscrowStorage escrowStorage;
     private PresetStorage presetStorage;
+    private ShopStorage shopStorage;
     private PresetManager presetManager;
     private SelectionManager selectionManager;
     private EconomyManager economyManager;
     private CheckinHandler checkinHandler;
     private ChatInputHandler chatInputHandler;
     private WebServer webServer;
+    private ShopService shopService;
+    private ShopContainerListener shopContainerListener;
     private boolean debugMode;
     private boolean elevatorEnabled;
     private SchedulerCompat.CancellableTask autoCheckoutTask;
@@ -86,11 +92,14 @@ public class HotelsPlugin extends JavaPlugin {
         this.ratingStorage = new RatingStorage(this);
         this.escrowStorage = new EscrowStorage(this);
         this.presetStorage = new PresetStorage(this);
+        this.shopStorage = new ShopStorage(this);
         this.presetManager = new PresetManager(this);
         this.selectionManager = new SelectionManager();
         this.economyManager = new EconomyManager(this);
         this.checkinHandler = new CheckinHandler(this);
         this.chatInputHandler = new ChatInputHandler(this);
+        this.shopService = new ShopService(this);
+        this.shopContainerListener = new ShopContainerListener(this);
         this.elevatorEnabled = getConfig().getBoolean("elevator.enabled", false);
 
         // 加载数据
@@ -99,6 +108,7 @@ public class HotelsPlugin extends JavaPlugin {
         ratingStorage.loadAll();
         escrowStorage.loadAll();
         presetStorage.loadAll();
+        shopStorage.loadAll();
 
         // 检查超时入住（重启后恢复定时任务）
         checkOverdueCheckins();
@@ -117,6 +127,10 @@ public class HotelsPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RoomProtectListener(this), this);
         getServer().getPluginManager().registerEvents(new ElevatorListener(this), this);
         getServer().getPluginManager().registerEvents(new DoorGuardListener(this), this);
+        // 店面容器自动发现 + 上线补发（仅当店面系统启用时注册）
+        if (getConfig().getBoolean("shop.enabled", true)) {
+            getServer().getPluginManager().registerEvents(shopContainerListener, this);
+        }
 
         // 注册命令
         HotelsCommand hotelsCommand = new HotelsCommand(this);
@@ -158,6 +172,9 @@ public class HotelsPlugin extends JavaPlugin {
         if (escrowStorage != null) {
             escrowStorage.saveAll();
         }
+        if (shopStorage != null) {
+            shopStorage.saveAll();
+        }
         getLogger().info("Hotels 已禁用");
     }
 
@@ -170,6 +187,8 @@ public class HotelsPlugin extends JavaPlugin {
     public RatingStorage getRatingStorage() { return ratingStorage; }
     public EscrowStorage getEscrowStorage() { return escrowStorage; }
     public PresetStorage getPresetStorage() { return presetStorage; }
+    public ShopStorage getShopStorage() { return shopStorage; }
+    public ShopService getShopService() { return shopService; }
     public PresetManager getPresetManager() { return presetManager; }
     public SelectionManager getSelectionManager() { return selectionManager; }
     public EconomyManager getEconomyManager() { return economyManager; }
