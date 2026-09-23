@@ -2,6 +2,24 @@
 
 一个 Bukkit/Spigot/Paper 插件，玩家可以圈地创建酒店房间，其他玩家可以付费入住。
 
+## 打包（下载后一键构建）
+
+只需要装 **JDK 21 或更高版本**，**不需要预先安装 Maven** —— 仓库自带 Maven Wrapper，首次构建会自动下载 Maven 和依赖。
+
+| 系统 | 操作 |
+|------|------|
+| Windows | 双击 `build.bat`，或在终端执行 `.\build.bat` |
+| Linux / macOS | `chmod +x build.sh && ./build.sh` |
+| 任意平台（手动） | `./mvnw clean package -DskipTests`（Windows 用 `mvnw.cmd`） |
+
+构建产物位于 `target/HotelsX-<版本>.jar`，把它放进服务器的 `plugins` 目录后重启服务器即可。
+
+脚本会先检查 Java 版本：如果 PATH 上的 `java` 是旧版本，会直接给出中文提示，而不是抛出一串编译错误。
+
+> Windows 上 `build.bat` 只是启动器，真正的逻辑和中文提示在 `build.ps1` 里。原因是 cmd.exe 解析「含中文的批处理文件」时存在码页错位问题，会把行切错位置，所以 `.bat` 保持纯 ASCII、中文全部交给 PowerShell 输出。
+
+需要跑单元测试时去掉 `-DskipTests`，即 `./mvnw clean verify`。
+
 ## 功能
 
 - 使用木斧选区创建房间（类似 WorldEdit）

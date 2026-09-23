@@ -1,0 +1,11 @@
+# 行尾约定：仓库启用了 core.autocrlf，若不固定下来，
+# mvnw / build.sh 在 Linux、macOS 上会被检出成 CRLF，直接报 "bad interpreter"。
+
+# POSIX shell 脚本必须保持 LF
+mvnw text eol=lf
+*.sh text eol=lf
+
+# Windows 脚本用 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
