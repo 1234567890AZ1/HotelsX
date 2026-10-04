@@ -58,7 +58,7 @@ public class BrowseRoomsGUI {
     public static void openTagFilter(Player player, HotelsPlugin plugin) {
         List<String> presetTags = plugin.getConfig().getStringList("room-tags");
         int size = Math.min(54, Math.max(9, ((presetTags.size() / 9) + 2) * 9));
-        Inventory inv = Bukkit.createInventory(new GUIHolder("tag_filter"), size, "§8§l按标签筛选");
+        Inventory inv = Bukkit.createInventory(new GUIHolder("tag_filter"), size, plugin.getLang().get("gui.browse.tag_filter_title"));
 
         ItemStack border = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
         for (int i = 0; i < 9; i++) inv.setItem(i, border);
@@ -66,8 +66,8 @@ public class BrowseRoomsGUI {
         ItemStack allItem = new ItemStack(Material.COMPASS);
         ItemMeta allMeta = allItem.getItemMeta();
         if (allMeta != null) {
-            allMeta.setDisplayName("§e§l全部房间");
-            allMeta.setLore(java.util.Arrays.asList("§7显示所有可入住的房间"));
+            allMeta.setDisplayName(plugin.getLang().get("gui.browse.all_rooms_name"));
+            allMeta.setLore(java.util.Arrays.asList(plugin.getLang().get("gui.browse.all_rooms_lore")));
             allItem.setItemMeta(allMeta);
         }
         inv.setItem(4, allItem);
@@ -82,16 +82,18 @@ public class BrowseRoomsGUI {
             if (meta != null) {
                 meta.setDisplayName("§e" + tag);
                 meta.setLore(java.util.Arrays.asList(
-                        "§7当前 §e" + count + " §7个房间有此标签",
+                        plugin.getLang().get("gui.browse.tag_count", "count", count),
                         "",
-                        "§e点击筛选"
+                        plugin.getLang().get("gui.browse.click_filter")
                 ));
                 item.setItemMeta(meta);
             }
             inv.setItem(slot++, item);
         }
 
-        inv.setItem(size - 1, createItem(Material.ARROW, "§7§l返回", "§8返回主菜单"));
+        inv.setItem(size - 1, createItem(Material.ARROW,
+                plugin.getLang().get("gui.common.back_gold"),
+                plugin.getLang().get("gui.common.back_to_main_lore")));
 
         player.openInventory(inv);
     }
@@ -106,7 +108,7 @@ public class BrowseRoomsGUI {
         List<HotelRoom> pageRooms = rooms.subList(start, end);
 
         String tagDisplay = currentTag != null && !currentTag.equals("all") ? " §7- §e" + currentTag : "";
-        String title = "§8§l浏览房间" + tagDisplay;
+        String title = plugin.getLang().get("gui.browse.title", "tag", tagDisplay);
         Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":" + (currentTag != null ? currentTag : "all") + ":" + page), 54, title);
 
         ItemStack border = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
@@ -123,11 +125,11 @@ public class BrowseRoomsGUI {
         ItemStack titleItem = new ItemStack(Material.GOLD_BLOCK);
         ItemMeta titleMeta = titleItem.getItemMeta();
         if (titleMeta != null) {
-            titleMeta.setDisplayName("§e§l浏览房间");
+            titleMeta.setDisplayName(plugin.getLang().get("gui.browse.title_item_name"));
             List<String> lore = new ArrayList<>();
-            lore.add("§7共 §e" + rooms.size() + " §7个可入住房间");
+            lore.add(plugin.getLang().get("gui.browse.total_available", "count", rooms.size()));
             if (currentTag != null && !currentTag.equals("all")) {
-                lore.add("§7标签筛选: §e" + currentTag);
+                lore.add(plugin.getLang().get("gui.browse.tag_filter_line", "tag", currentTag));
             }
             titleMeta.setLore(lore);
             titleItem.setItemMeta(titleMeta);
@@ -137,8 +139,8 @@ public class BrowseRoomsGUI {
         ItemStack filterItem = new ItemStack(Material.HOPPER);
         ItemMeta filterMeta = filterItem.getItemMeta();
         if (filterMeta != null) {
-            filterMeta.setDisplayName("§e§l按标签筛选");
-            filterMeta.setLore(java.util.Arrays.asList("§7点击选择标签"));
+            filterMeta.setDisplayName(plugin.getLang().get("gui.browse.filter_name"));
+            filterMeta.setLore(java.util.Arrays.asList(plugin.getLang().get("gui.browse.filter_lore")));
             filterItem.setItemMeta(filterMeta);
         }
         inv.setItem(4, filterItem);
@@ -146,8 +148,8 @@ public class BrowseRoomsGUI {
         ItemStack searchItem = new ItemStack(Material.COMPASS);
         ItemMeta searchMeta = searchItem.getItemMeta();
         if (searchMeta != null) {
-            searchMeta.setDisplayName("§d§l搜索房间");
-            searchMeta.setLore(java.util.Arrays.asList("§7点击搜索"));
+            searchMeta.setDisplayName(plugin.getLang().get("gui.common.search_room"));
+            searchMeta.setLore(java.util.Arrays.asList(plugin.getLang().get("gui.common.click_search")));
             searchItem.setItemMeta(searchMeta);
         }
         inv.setItem(5, searchItem);
@@ -156,7 +158,7 @@ public class BrowseRoomsGUI {
             ItemStack empty = new ItemStack(Material.BARRIER);
             ItemMeta meta = empty.getItemMeta();
             if (meta != null) {
-                meta.setDisplayName("§c暂无可用房间");
+                meta.setDisplayName(plugin.getLang().get("gui.browse.empty"));
                 empty.setItemMeta(meta);
             }
             inv.setItem(22, empty);
@@ -171,8 +173,8 @@ public class BrowseRoomsGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l返回");
-            backMeta.setLore(java.util.Arrays.asList("§7返回主菜单"));
+            backMeta.setDisplayName(plugin.getLang().get("gui.common.back_red"));
+            backMeta.setLore(java.util.Arrays.asList(plugin.getLang().get("gui.common.back_to_main_lore_7")));
             back.setItemMeta(backMeta);
         }
         inv.setItem(45, back);
@@ -181,19 +183,19 @@ public class BrowseRoomsGUI {
             ItemStack prev = new ItemStack(Material.ARROW);
             ItemMeta prevMeta = prev.getItemMeta();
             if (prevMeta != null) {
-                prevMeta.setDisplayName("§7上一页");
+                prevMeta.setDisplayName(plugin.getLang().get("gui.common.prev_page"));
                 prev.setItemMeta(prevMeta);
             }
             inv.setItem(47, prev);
         }
 
-        inv.setItem(49, createItem(Material.PAPER, "§7第 " + (page + 1) + " / " + Math.max(1, totalPages) + " 页"));
+        inv.setItem(49, createItem(Material.PAPER, plugin.getLang().get("gui.common.page", "page", page + 1, "total", Math.max(1, totalPages))));
 
         if (page < totalPages - 1) {
             ItemStack next = new ItemStack(Material.ARROW);
             ItemMeta nextMeta = next.getItemMeta();
             if (nextMeta != null) {
-                nextMeta.setDisplayName("§7下一页");
+                nextMeta.setDisplayName(plugin.getLang().get("gui.common.next_page"));
                 next.setItemMeta(nextMeta);
             }
             inv.setItem(51, next);
@@ -209,6 +211,7 @@ public class BrowseRoomsGUI {
     }
 
     private static ItemStack createRoomItem(HotelRoom room, Player viewer) {
+        HotelsPlugin plugin = HotelsPlugin.getInstance();
         Material icon;
         String statusColor;
 
@@ -236,31 +239,31 @@ public class BrowseRoomsGUI {
             meta.setDisplayName("§e" + room.getName());
 
             List<String> lore = new ArrayList<>();
-            lore.add("§7ID: §f" + room.getId());
-            lore.add("§7房主: §f" + room.getOwnerName());
-            lore.add("§7状态: " + statusColor + room.getStatus().name());
+            lore.add(plugin.getLang().get("gui.common.id", "id", room.getId()));
+            lore.add(plugin.getLang().get("gui.common.owner", "owner", room.getOwnerName()));
+            lore.add(plugin.getLang().get("gui.common.status", "status", statusColor + room.getStatus().name()));
             if (room.hasActiveDiscount()) {
-                lore.add("§7价格: §m§f" + room.getPrice() + "§r §a§l¥" + room.getDiscountPrice());
+                lore.add(plugin.getLang().get("gui.browse.price_discount", "price", room.getPrice(), "discount", room.getDiscountPrice()));
                 lore.add(room.getDiscountDisplay());
             } else {
-                lore.add("§7价格: §f" + room.getPrice());
+                lore.add(plugin.getLang().get("gui.common.price", "price", room.getPrice()));
             }
-            lore.add("§7世界: §f" + room.getWorldName());
-            lore.add("§7大小: §f" + room.getVolume() + " 方块");
+            lore.add(plugin.getLang().get("gui.common.world", "world", room.getWorldName()));
+            lore.add(plugin.getLang().get("gui.browse.size", "volume", room.getVolume()));
             if (!room.getTags().isEmpty()) {
-                lore.add("§7标签: " + room.getTagsDisplay());
+                lore.add(plugin.getLang().get("gui.common.tags", "tags", room.getTagsDisplay()));
             }
             if (room.hasPassword()) {
-                lore.add("§c需要密码");
+                lore.add(plugin.getLang().get("gui.common.need_password"));
             }
             if (room.isLocked()) {
-                lore.add("§c已锁定");
+                lore.add(plugin.getLang().get("gui.common.locked"));
             }
             if (room.isOccupied() && room.getCurrentGuestName() != null) {
-                lore.add("§7当前客人: §f" + room.getCurrentGuestName());
+                lore.add(plugin.getLang().get("gui.common.current_guest", "guest", room.getCurrentGuestName()));
             }
             lore.add("");
-            lore.add("§e左键 §7入住此房间");
+            lore.add(plugin.getLang().get("gui.browse.checkin_hint"));
 
             meta.setLore(lore);
             item.setItemMeta(meta);

@@ -59,7 +59,7 @@ public class MyRoomsGUI {
         int end = Math.min(start + PAGE_SIZE, rooms.size());
         List<HotelRoom> pageRooms = rooms.subList(start, end);
 
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":" + page), 54, "§8§l我的房间 §7(" + (page + 1) + "/" + Math.max(1, totalPages) + ")");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":" + page), 54, plugin.getLang().get("gui.my_rooms.title", "page", page + 1, "total", Math.max(1, totalPages)));
 
         ItemStack border = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
         ItemMeta borderMeta = border.getItemMeta();
@@ -75,9 +75,9 @@ public class MyRoomsGUI {
         ItemStack titleItem = new ItemStack(Material.GOLD_BLOCK);
         ItemMeta titleMeta = titleItem.getItemMeta();
         if (titleMeta != null) {
-            titleMeta.setDisplayName("§e§l我的房间");
+            titleMeta.setDisplayName(plugin.getLang().get("gui.my_rooms.title_item_name"));
             List<String> lore = new ArrayList<>();
-            lore.add("§7共 §e" + rooms.size() + " §7个房间");
+            lore.add(plugin.getLang().get("gui.my_rooms.total_rooms", "count", rooms.size()));
             titleMeta.setLore(lore);
             titleItem.setItemMeta(titleMeta);
         }
@@ -86,8 +86,8 @@ public class MyRoomsGUI {
         ItemStack searchItem = new ItemStack(Material.COMPASS);
         ItemMeta searchMeta = searchItem.getItemMeta();
         if (searchMeta != null) {
-            searchMeta.setDisplayName("§d§l搜索房间");
-            searchMeta.setLore(java.util.Arrays.asList("§7点击搜索"));
+            searchMeta.setDisplayName(plugin.getLang().get("gui.common.search_room"));
+            searchMeta.setLore(java.util.Arrays.asList(plugin.getLang().get("gui.common.click_search")));
             searchItem.setItemMeta(searchMeta);
         }
         inv.setItem(5, searchItem);
@@ -100,8 +100,8 @@ public class MyRoomsGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l返回");
-            backMeta.setLore(java.util.Arrays.asList("§7返回主菜单"));
+            backMeta.setDisplayName(plugin.getLang().get("gui.common.back_red"));
+            backMeta.setLore(java.util.Arrays.asList(plugin.getLang().get("gui.common.back_to_main_lore_7")));
             back.setItemMeta(backMeta);
         }
         inv.setItem(45, back);
@@ -110,19 +110,19 @@ public class MyRoomsGUI {
             ItemStack prev = new ItemStack(Material.ARROW);
             ItemMeta prevMeta = prev.getItemMeta();
             if (prevMeta != null) {
-                prevMeta.setDisplayName("§7上一页");
+                prevMeta.setDisplayName(plugin.getLang().get("gui.common.prev_page"));
                 prev.setItemMeta(prevMeta);
             }
             inv.setItem(47, prev);
         }
 
-        inv.setItem(49, createItem(Material.PAPER, "§7第 " + (page + 1) + " / " + Math.max(1, totalPages) + " 页"));
+        inv.setItem(49, createItem(Material.PAPER, plugin.getLang().get("gui.common.page", "page", page + 1, "total", Math.max(1, totalPages))));
 
         if (page < totalPages - 1) {
             ItemStack next = new ItemStack(Material.ARROW);
             ItemMeta nextMeta = next.getItemMeta();
             if (nextMeta != null) {
-                nextMeta.setDisplayName("§7下一页");
+                nextMeta.setDisplayName(plugin.getLang().get("gui.common.next_page"));
                 next.setItemMeta(nextMeta);
             }
             inv.setItem(51, next);
@@ -138,6 +138,7 @@ public class MyRoomsGUI {
     }
 
     private static ItemStack createRoomItem(HotelRoom room) {
+        HotelsPlugin plugin = HotelsPlugin.getInstance();
         Material material;
         String statusColor;
 
@@ -165,31 +166,31 @@ public class MyRoomsGUI {
             meta.setDisplayName("§e" + room.getName());
 
             List<String> lore = new ArrayList<>();
-            lore.add("§7ID: §f" + room.getId());
-            lore.add("§7状态: " + statusColor + room.getStatus().name());
+            lore.add(plugin.getLang().get("gui.common.id", "id", room.getId()));
+            lore.add(plugin.getLang().get("gui.common.status", "status", statusColor + room.getStatus().name()));
             if (room.hasActiveDiscount()) {
-                lore.add("§7价格: §m§f" + room.getPrice() + "§r §a§l¥" + room.getDiscountPrice());
+                lore.add(plugin.getLang().get("gui.browse.price_discount", "price", room.getPrice(), "discount", room.getDiscountPrice()));
                 lore.add(room.getDiscountDisplay());
             } else {
-                lore.add("§7价格: §f" + room.getPrice() + " 每晚");
+                lore.add(plugin.getLang().get("gui.my_rooms.price_per_night", "price", room.getPrice()));
             }
-            lore.add("§7世界: §f" + room.getWorldName());
-            lore.add("§7区域: §f" + room.getVolume() + " 方块");
+            lore.add(plugin.getLang().get("gui.common.world", "world", room.getWorldName()));
+            lore.add(plugin.getLang().get("gui.my_rooms.area", "volume", room.getVolume()));
             if (!room.getTags().isEmpty()) {
-                lore.add("§7标签: " + room.getTagsDisplay());
+                lore.add(plugin.getLang().get("gui.common.tags", "tags", room.getTagsDisplay()));
             }
             if (room.isLocked()) {
-                lore.add("§c已上锁");
+                lore.add(plugin.getLang().get("gui.my_rooms.locked"));
             }
             if (room.hasPassword()) {
-                lore.add("§c需要密码");
+                lore.add(plugin.getLang().get("gui.common.need_password"));
             }
             if (room.isOccupied() && room.getCurrentGuestName() != null) {
-                lore.add("§7客人: §f" + room.getCurrentGuestName());
+                lore.add(plugin.getLang().get("gui.my_rooms.guest", "guest", room.getCurrentGuestName()));
             }
             lore.add("");
-            lore.add("§e左键 §7管理房间");
-            lore.add("§c右键 §7删除房间");
+            lore.add(plugin.getLang().get("gui.my_rooms.manage_hint"));
+            lore.add(plugin.getLang().get("gui.my_rooms.delete_hint"));
 
             meta.setLore(lore);
             item.setItemMeta(meta);
@@ -199,10 +200,10 @@ public class MyRoomsGUI {
 
     private static String getStatusDisplay(HotelRoom.RoomStatus status) {
         switch (status) {
-            case AVAILABLE: return "§a空闲";
-            case OCCUPIED: return "§c已入住";
-            case MAINTENANCE: return "§7维护中";
-            default: return "§7未知";
+            case AVAILABLE: return HotelsPlugin.getInstance().getLang().get("command.status.available");
+            case OCCUPIED: return HotelsPlugin.getInstance().getLang().get("command.status.occupied");
+            case MAINTENANCE: return HotelsPlugin.getInstance().getLang().get("command.status.maintenance");
+            default: return HotelsPlugin.getInstance().getLang().get("command.status.unknown");
         }
     }
 

@@ -272,8 +272,12 @@ public class ShopService {
                     ? "，背包空间不足，剩余 " + (amount - delivered) + " 件已进入待领取队列"
                     : "，你当前不在线，" + amount + " 件已进入待领取队列");
         if (isTransactionMessages() && online != null && online.isOnline()) {
-            online.sendActionBar("§a[商店] 购入 " + amount + " x " + mat.name()
-                    + " 共 " + plugin.getEconomyManager().format(total) + tip);
+            String key = delivered == amount ? "shop.purchase.delivered"
+                    : (delivered > 0 ? "shop.purchase.partial" : "shop.purchase.offline");
+            online.sendActionBar(plugin.getLang().get(key,
+                    "amount", amount, "material", mat.name(),
+                    "total", plugin.getEconomyManager().format(total),
+                    "remaining", amount - delivered));
         }
         plugin.getLogger().info("[Web商店] " + buyerName + " 在店铺 " + shop.getDisplayNameSafe()
                 + " 购买了 " + amount + " x " + mat.name() + "，金额 " + plugin.getEconomyManager().format(total));
@@ -338,9 +342,9 @@ public class ShopService {
         }
         if (claimedAny) {
             if (stillWaiting) {
-                player.sendMessage("§e[商店] 部分物品已发放到背包，背包空间不足的仍在待领取队列中");
+                plugin.getLang().send(player, "shop.deliveries_partial");
             } else {
-                player.sendMessage("§a[商店] 你在 Web 店铺购买的物品已全部发放到背包");
+                plugin.getLang().send(player, "shop.deliveries_all");
             }
         }
     }

@@ -62,7 +62,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage("§c该命令只能由玩家执行");
+            plugin.getLang().send(sender, "common.player_only");
             return true;
         }
 
@@ -71,7 +71,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 0) {
             // 打开主菜单
             if (!player.hasPermission("hotels.use")) {
-                player.sendMessage("§c你没有权限使用酒店系统");
+                plugin.getLang().send(player, "common.no_permission_use");
                 return true;
             }
             plugin.log(player, "打开主菜单");
@@ -87,7 +87,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
 
             case "create":
                 if (args.length < 2) {
-                    player.sendMessage("§c用法: /ht create <房间名称>");
+                    plugin.getLang().send(player, "command.create.usage");
                     return true;
                 }
                 handleCreate(player, String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
@@ -96,7 +96,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
             case "remove":
             case "delete":
                 if (args.length < 2) {
-                    player.sendMessage("§c用法: /ht remove <房间ID>");
+                    plugin.getLang().send(player, "command.remove.usage");
                     return true;
                 }
                 handleRemove(player, args[1]);
@@ -104,7 +104,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
 
             case "manage":
                 if (args.length < 2) {
-                    player.sendMessage("§c用法: /ht manage <房间ID>");
+                    plugin.getLang().send(player, "command.manage.usage");
                     return true;
                 }
                 handleManage(player, args[1]);
@@ -116,7 +116,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
 
             case "checkin":
                 if (args.length < 2) {
-                    player.sendMessage("§c用法: /ht checkin <房间ID>");
+                    plugin.getLang().send(player, "command.checkin.usage");
                     return true;
                 }
                 handleCheckin(player, args[1]);
@@ -152,7 +152,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
 
             case "info":
                 if (args.length < 2) {
-                    player.sendMessage("§c用法: /ht info <房间ID>");
+                    plugin.getLang().send(player, "command.info.usage");
                     return true;
                 }
                 handleInfo(player, args[1]);
@@ -192,7 +192,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
                 break;
 
             default:
-                player.sendMessage("§c未知子命令，输入 /ht 查看帮助");
+                plugin.getLang().send(player, "common.unknown_subcommand");
                 break;
         }
 
@@ -201,37 +201,34 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
 
     private void handleWand(Player player) {
         if (!player.hasPermission("hotels.create")) {
-            player.sendMessage("§c你没有权限创建房间");
+            plugin.getLang().send(player, "common.no_permission_create");
             return;
         }
 
         ItemStack wand = new ItemStack(Material.WOODEN_AXE);
         ItemMeta meta = wand.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName("§6§l选区工具");
-            meta.setLore(Arrays.asList(
-                    "§7左键: 设置第 1 点",
-                    "§7右键: 设置第 2 点"
-            ));
+            meta.setDisplayName(plugin.getLang().get("command.wand.item_name"));
+            meta.setLore(plugin.getLang().getList("command.wand.lore"));
             wand.setItemMeta(meta);
         }
 
         player.getInventory().addItem(wand);
         plugin.log(player, "获取选区工具");
-        player.sendMessage("§a已获取选区工具（木斧）");
-        player.sendMessage("§7左键点击方块/空气设置第 1 点");
-        player.sendMessage("§7右键点击方块/空气设置第 2 点");
+        plugin.getLang().send(player, "command.wand.received");
+        plugin.getLang().send(player, "command.wand.hint1");
+        plugin.getLang().send(player, "command.wand.hint2");
     }
 
     private void handleCreate(Player player, String name) {
         if (!player.hasPermission("hotels.create")) {
-            player.sendMessage("§c你没有权限创建房间");
+            plugin.getLang().send(player, "common.no_permission_create");
             return;
         }
 
         PlayerSelection sel = plugin.getSelectionManager().getSelection(player);
         if (!sel.hasBothPositions()) {
-            player.sendMessage("§c请先使用木斧选择区域的两个对角点");
+            plugin.getLang().send(player, "command.create.no_selection");
             return;
         }
 
@@ -239,7 +236,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
         Location p2 = sel.getPos2();
 
         if (!p1.getWorld().equals(p2.getWorld())) {
-            player.sendMessage("§c两个点必须在同一个世界");
+            plugin.getLang().send(player, "command.create.cross_world");
             return;
         }
 
@@ -248,12 +245,12 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
                 p1.getX(), p1.getY(), p1.getZ(),
                 p2.getX(), p2.getY(), p2.getZ(),
                 null)) {
-            player.sendMessage("§c该区域与其他房间重叠");
+            plugin.getLang().send(player, "command.create.overlap");
             return;
         }
 
         if (name.length() > 32) {
-            player.sendMessage("§c房间名称最长 32 个字符");
+            plugin.getLang().send(player, "command.create.name_too_long");
             return;
         }
 
@@ -282,38 +279,38 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
         plugin.getSelectionManager().clearSelection(player);
 
         plugin.log(player, "创建房间: " + name + " (ID: " + room.getId() + ")");
-        player.sendMessage("§a房间 §e" + name + " §a创建成功！");
-        player.sendMessage("§7房间 ID: §e" + room.getId());
-        player.sendMessage("§7传送点已设置为当前位置");
-        player.sendMessage("§7使用 §e/ht manage " + room.getId() + " §7管理房间");
+        plugin.getLang().send(player, "command.create.success", "name", name);
+        plugin.getLang().send(player, "command.create.id", "id", room.getId());
+        plugin.getLang().send(player, "command.create.spawn_set");
+        plugin.getLang().send(player, "command.create.manage_hint", "id", room.getId());
     }
 
     private void handleRemove(Player player, String roomId) {
         HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
         if (room == null) {
-            player.sendMessage("§c房间不存在");
+            plugin.getLang().send(player, "common.room_not_found");
             return;
         }
 
         if (!room.getOwner().equals(player.getUniqueId()) && !player.hasPermission("hotels.admin")) {
-            player.sendMessage("§c你不是这个房间的房主");
+            plugin.getLang().send(player, "common.not_room_owner");
             return;
         }
 
         plugin.getRoomStorage().removeRoom(roomId);
         plugin.log(player, "删除房间: " + room.getName() + " (ID: " + roomId + ")");
-        player.sendMessage("§c房间 §e" + room.getName() + " §c已删除");
+        plugin.getLang().send(player, "command.remove.success", "room", room.getName());
     }
 
     private void handleManage(Player player, String roomId) {
         HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
         if (room == null) {
-            player.sendMessage("§c房间不存在");
+            plugin.getLang().send(player, "common.room_not_found");
             return;
         }
 
         if (!room.getOwner().equals(player.getUniqueId()) && !player.hasPermission("hotels.admin")) {
-            player.sendMessage("§c你不是这个房间的房主");
+            plugin.getLang().send(player, "common.not_room_owner");
             return;
         }
 
@@ -330,23 +327,23 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
         java.util.List<HotelRoom> rooms = plugin.getCheckinHandler().getPlayerRooms(player);
         
         if (rooms.isEmpty()) {
-            player.sendMessage("§c你当前没有入住任何房间");
+            plugin.getLang().send(player, "command.checkedin.none");
             return;
         }
 
-        player.sendMessage("§6===== 你当前入住的房间 =====");
+        plugin.getLang().send(player, "command.checkedin.header");
         for (HotelRoom room : rooms) {
             String name = room.getName() != null ? room.getName() : room.getId();
-            player.sendMessage("§7- §e" + name + " §7(ID: " + room.getId() + ")");
-            player.sendMessage("§7  §f退房: §e/ht checkout " + room.getId());
+            plugin.getLang().send(player, "command.checkedin.line", "room", name, "id", room.getId());
+            plugin.getLang().send(player, "command.checkedin.checkout", "id", room.getId());
         }
-        player.sendMessage("§6============================");
+        plugin.getLang().send(player, "command.checkedin.footer");
     }
 
     private void handleWeb(Player player, String[] args) {
         com.hotels.web.WebServer ws = plugin.getWebServer();
         if (ws == null) {
-            player.sendMessage("§cWeb 面板未初始化");
+            plugin.getLang().send(player, "command.web.not_initialized");
             return;
         }
 
@@ -372,56 +369,56 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
 
         // 其他命令需要 admin 权限
         if (!player.hasPermission("hotels.admin") && !player.isOp()) {
-            player.sendMessage("§c你没有权限使用该命令");
-            player.sendMessage("§7普通玩家可用命令:");
-            player.sendMessage("§8  /ht web register <用户名>  §7- 注册 Web 账户（密码在聊天框输入）");
-            player.sendMessage("§8  /ht web changepwd           §7- 修改密码（密码在聊天框输入）");
-            player.sendMessage("§8  /ht web me                  §7- 查看注册信息");
-            player.sendMessage("§8  /ht web help                §7- 显示帮助");
+            plugin.getLang().send(player, "command.web.no_permission");
+            plugin.getLang().send(player, "command.web.player_commands");
+            plugin.getLang().send(player, "command.web.help_register");
+            plugin.getLang().send(player, "command.web.help_changepwd");
+            plugin.getLang().send(player, "command.web.help_me");
+            plugin.getLang().send(player, "command.web.help_help");
             return;
         }
 
-        String url = "http://<服务器IP>:" + ws.getPort();
+        String url = plugin.getLang().get("command.web.url", "port", ws.getPort());
 
         switch (sub) {
             case "start":
                 if (ws.isRunning()) {
-                    player.sendMessage("§cWeb 面板已在运行");
-                    player.sendMessage("§7访问: §e" + url);
+                    plugin.getLang().send(player, "command.web.already_running");
+                    plugin.getLang().send(player, "command.web.access", "url", url);
                 } else if (ws.start()) {
-                    player.sendMessage("§aWeb 面板已启动");
-                    player.sendMessage("§7访问: §e" + url);
+                    plugin.getLang().send(player, "command.web.started");
+                    plugin.getLang().send(player, "command.web.access", "url", url);
                 } else {
-                    player.sendMessage("§c启动失败，请查看控制台日志");
+                    plugin.getLang().send(player, "command.web.start_failed");
                 }
                 break;
 
             case "stop":
                 if (ws.isRunning()) {
                     ws.stop();
-                    player.sendMessage("§cWeb 面板已停止");
+                    plugin.getLang().send(player, "command.web.stopped");
                 } else {
-                    player.sendMessage("§7Web 面板未运行");
+                    plugin.getLang().send(player, "command.web.not_running");
                 }
                 break;
 
             case "restart":
                 if (ws.isRunning()) ws.stop();
                 if (ws.start()) {
-                    player.sendMessage("§aWeb 面板已重启");
-                    player.sendMessage("§7访问: §e" + url);
+                    plugin.getLang().send(player, "command.web.restarted");
+                    plugin.getLang().send(player, "command.web.access", "url", url);
                 } else {
-                    player.sendMessage("§c重启失败");
+                    plugin.getLang().send(player, "command.web.restart_failed");
                 }
                 break;
 
             case "status":
                 if (ws.isRunning()) {
-                    player.sendMessage("§aWeb 面板运行中");
-                    player.sendMessage("§7访问地址: §e" + url);
-                    player.sendMessage("§7端口: §e" + ws.getPort());
+                    plugin.getLang().send(player, "command.web.running");
+                    plugin.getLang().send(player, "command.web.access_address", "url", url);
+                    plugin.getLang().send(player, "command.web.port", "port", ws.getPort());
                 } else {
-                    player.sendMessage("§7Web 面板未运行，输入 §e/ht web start §7启动");
+                    plugin.getLang().send(player, "command.web.not_running_hint");
                 }
                 break;
 
@@ -432,77 +429,80 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleWebHelp(Player player, com.hotels.web.WebServer ws) {
-        player.sendMessage("§6═══════ §eHotelsX Web 面板 §6═══════");
+        plugin.getLang().send(player, "command.web.help_title");
         boolean isAdmin = player.hasPermission("hotels.admin") || player.isOp();
         if (isAdmin) {
-            player.sendMessage("§6管理命令:");
-            player.sendMessage("§8  /ht web start    §7- 启动 Web 面板");
-            player.sendMessage("§8  /ht web stop     §7- 停止 Web 面板");
-            player.sendMessage("§8  /ht web restart  §7- 重启 Web 面板");
-            player.sendMessage("§8  /ht web status   §7- 查看运行状态");
+            plugin.getLang().send(player, "command.web.admin_commands");
+            plugin.getLang().send(player, "command.web.help_start");
+            plugin.getLang().send(player, "command.web.help_stop");
+            plugin.getLang().send(player, "command.web.help_restart");
+            plugin.getLang().send(player, "command.web.help_status");
         }
-        player.sendMessage("§6账户命令:");
-        player.sendMessage("§8  /ht web register <用户名>  §7- 注册 Web 账户（密码在聊天框输入）");
-        player.sendMessage("§8  /ht web changepwd           §7- 修改密码（密码在聊天框输入）");
-        player.sendMessage("§8  /ht web me                  §7- 查看注册信息");
-        player.sendMessage("§8  /ht web help                §7- 显示此帮助");
+        plugin.getLang().send(player, "command.web.account_commands");
+        plugin.getLang().send(player, "command.web.help_register");
+        plugin.getLang().send(player, "command.web.help_changepwd");
+        plugin.getLang().send(player, "command.web.help_me");
+        plugin.getLang().send(player, "command.web.help_help_full");
         if (ws.isRunning()) {
-            player.sendMessage("§7访问地址: §ehttp://<服务器IP>:" + ws.getPort());
+            plugin.getLang().send(player, "command.web.access_address",
+                    "url", plugin.getLang().get("command.web.url", "port", ws.getPort()));
         } else {
-            player.sendMessage("§7Web 面板当前未运行" + (isAdmin ? "，输入 §e/ht web start §7启动" : ""));
+            plugin.getLang().send(player, isAdmin
+                    ? "command.web.help_tail_stopped_start"
+                    : "command.web.help_tail_stopped");
         }
-        player.sendMessage("§6══════════════════════════════════");
+        plugin.getLang().send(player, "command.web.help_footer");
     }
 
     private void handleWebRegister(Player player, String[] args, com.hotels.web.WebServer ws) {
         if (args.length < 3) {
-            player.sendMessage("§c用法: /ht web register <用户名>");
+            plugin.getLang().send(player, "command.web.register_usage");
             return;
         }
         String username = args[2];
         if (ws.usernameExists(username)) {
-            player.sendMessage("§c用户名已存在");
+            plugin.getLang().send(player, "command.web.username_exists");
             return;
         }
         // 密码通过聊天框输入，避免出现在命令日志中
-        player.sendMessage("§e请输入密码（至少4位，输入后回车确认）:");
-        player.sendMessage("§7提示: 注册后自动关联您的游戏ID（" + player.getName() + "），作为普通用户只能管理自己的房间");
+        plugin.getLang().send(player, "command.web.enter_password");
+        plugin.getLang().send(player, "command.web.register_hint", "player", player.getName());
         plugin.getChatInputHandler().expectInput(player, "web_register_pwd:" + username);
     }
 
     private void handleWebChangePwd(Player player, String[] args, com.hotels.web.WebServer ws) {
         if (ws.getUsernameByMinecraft(player.getName()) == null) {
-            player.sendMessage("§c您尚未注册 Web 账户");
-            player.sendMessage("§7输入 §e/ht web register <用户名> §7注册");
+            plugin.getLang().send(player, "command.web.not_registered");
+            plugin.getLang().send(player, "command.web.register_hint2");
             return;
         }
         // 密码通过聊天框输入，避免出现在命令日志中
-        player.sendMessage("§e请输入新密码（至少4位，输入后回车确认）:");
+        plugin.getLang().send(player, "command.web.enter_new_password");
         plugin.getChatInputHandler().expectInput(player, "web_changepwd");
     }
 
     private void handleWebMe(Player player, com.hotels.web.WebServer ws) {
         String username = ws.getUsernameByMinecraft(player.getName());
         if (username == null) {
-            player.sendMessage("§7您尚未注册 Web 管理员账户");
-            player.sendMessage("§7输入 §e/ht web register <用户名> <密码> §7注册");
+            plugin.getLang().send(player, "command.web.me_not_registered");
+            plugin.getLang().send(player, "command.web.me_register_hint");
         } else {
-            player.sendMessage("§a您已注册 Web 管理员账户");
-            player.sendMessage("§7账户: §e" + username);
-            player.sendMessage("§7关联游戏ID: §e" + player.getName());
-            player.sendMessage("§7修改密码: §e/ht web changepwd <新密码>");
+            plugin.getLang().send(player, "command.web.me_registered");
+            plugin.getLang().send(player, "command.web.me_account", "account", username);
+            plugin.getLang().send(player, "command.web.me_linked", "player", player.getName());
+            plugin.getLang().send(player, "command.web.me_changepwd");
         }
     }
 
     private void handleCheckin(Player player, String roomId) {
         HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
         if (room == null) {
-            player.sendMessage("§c房间不存在");
+            plugin.getLang().send(player, "common.room_not_found");
             return;
         }
         // 有密码且无 bypass 权限时，通过聊天框输入密码（避免密码出现在命令日志中）
         if (room.hasPassword() && !player.hasPermission("hotels.bypass")) {
-            player.sendMessage("§e请输入房间密码（输入后回车确认）:");
+            plugin.getLang().send(player, "checkin.enter_password");
             plugin.getChatInputHandler().expectInput(player, "checkin_password:" + roomId);
             return;
         }
@@ -513,39 +513,42 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
     private void handleInfo(Player player, String roomId) {
         HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
         if (room == null) {
-            player.sendMessage("§c房间不存在");
+            plugin.getLang().send(player, "common.room_not_found");
             return;
         }
 
         plugin.log(player, "查看房间信息: " + room.getName() + " (ID: " + roomId + ")");
-        player.sendMessage("§6=== 房间信息 ===");
-        player.sendMessage("§7名称: §f" + room.getName());
-        player.sendMessage("§7ID: §f" + room.getId());
-        player.sendMessage("§7房主: §f" + room.getOwnerName());
-        player.sendMessage("§7状态: " + getStatusDisplay(room.getStatus()));
-        player.sendMessage("§7价格: §f" + plugin.getEconomyManager().format(room.getPrice()));
-        player.sendMessage("§7世界: §f" + room.getWorldName());
-        player.sendMessage("§7区域: §f" + room.getVolume() + " 方块");
-        player.sendMessage("§7锁定: " + (room.isLocked() ? "§c是" : "§a否"));
-        player.sendMessage("§7密码: " + (room.hasPassword() ? "§c是" : "§a否"));
+        plugin.getLang().send(player, "command.info.title");
+        plugin.getLang().send(player, "command.info.name", "name", room.getName());
+        plugin.getLang().send(player, "command.info.id", "id", room.getId());
+        plugin.getLang().send(player, "command.info.owner", "owner", room.getOwnerName());
+        plugin.getLang().send(player, "command.info.status", "status", getStatusDisplay(room.getStatus()));
+        plugin.getLang().send(player, "command.info.price",
+                "price", plugin.getEconomyManager().format(room.getPrice()));
+        plugin.getLang().send(player, "command.info.world", "world", room.getWorldName());
+        plugin.getLang().send(player, "command.info.area", "volume", room.getVolume());
+        plugin.getLang().send(player, "command.info.locked", "value",
+                plugin.getLang().get(room.isLocked() ? "common.yes" : "common.no"));
+        plugin.getLang().send(player, "command.info.password", "value",
+                plugin.getLang().get(room.hasPassword() ? "common.yes" : "common.no"));
         if (room.isOccupied()) {
-            player.sendMessage("§7客人: §f" + room.getCurrentGuestName());
+            plugin.getLang().send(player, "command.info.guest", "guest", room.getCurrentGuestName());
         }
     }
 
     private void handleAdmin(Player player, String[] args) {
         if (!player.hasPermission("hotels.admin")) {
-            player.sendMessage("§c你没有管理员权限");
+            plugin.getLang().send(player, "command.admin.no_permission");
             return;
         }
 
         if (args.length < 2) {
-            player.sendMessage("§6=== 酒店管理 ===");
-            player.sendMessage("§e/ht admin panel §7- 打开管理员面板");
-            player.sendMessage("§e/ht admin list §7- 所有房间列表");
-            player.sendMessage("§e/ht admin tp <ID> §7- 传送到指定房间");
-            player.sendMessage("§e/ht admin remove <ID> §7- 强制删除房间");
-            player.sendMessage("§e/ht admin reload §7- 重载配置");
+            plugin.getLang().send(player, "command.admin.title");
+            plugin.getLang().send(player, "command.admin.help_panel");
+            plugin.getLang().send(player, "command.admin.help_list");
+            plugin.getLang().send(player, "command.admin.help_tp");
+            plugin.getLang().send(player, "command.admin.help_remove");
+            plugin.getLang().send(player, "command.admin.help_reload");
             return;
         }
 
@@ -556,24 +559,25 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
                 break;
 
             case "list":
-                player.sendMessage("§6所有房间 (§e" + plugin.getRoomStorage().getRoomCount() + "§6):");
+                plugin.getLang().send(player, "command.admin.list_header",
+                        "count", plugin.getRoomStorage().getRoomCount());
                 for (HotelRoom room : plugin.getRoomStorage().getAllRooms()) {
-                    player.sendMessage(String.format(
-                            " §7- §e%s §7(%s) §7房主: %s §7[%s]",
-                            room.getName(), room.getId(), room.getOwnerName(),
-                            getStatusDisplay(room.getStatus())
-                    ));
+                    plugin.getLang().send(player, "command.admin.list_line",
+                            "room", room.getName(),
+                            "id", room.getId(),
+                            "owner", room.getOwnerName(),
+                            "status", getStatusDisplay(room.getStatus()));
                 }
                 break;
 
             case "tp":
                 if (args.length < 3) {
-                    player.sendMessage("§c用法: /ht admin tp <房间ID>");
+                    plugin.getLang().send(player, "command.admin.tp_usage");
                     return;
                 }
                 HotelRoom tpRoom = plugin.getRoomStorage().getRoom(args[2]);
                 if (tpRoom == null) {
-                    player.sendMessage("§c房间不存在");
+                    plugin.getLang().send(player, "common.room_not_found");
                     return;
                 }
                 Location tpLoc = new Location(
@@ -583,35 +587,35 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
                 );
                 com.hotels.util.SchedulerCompat.teleport(player, tpLoc);
                 plugin.log(player, "管理员传送: 到房间 " + tpRoom.getName());
-                player.sendMessage("§a已传送到房间 " + tpRoom.getName());
+                plugin.getLang().send(player, "command.admin.tp_success", "room", tpRoom.getName());
                 break;
 
             case "remove":
                 if (args.length < 3) {
-                    player.sendMessage("§c用法: /ht admin remove <房间ID>");
+                    plugin.getLang().send(player, "command.admin.remove_usage");
                     return;
                 }
                 HotelRoom rmRoom = plugin.getRoomStorage().getRoom(args[2]);
                 if (rmRoom == null) {
-                    player.sendMessage("§c房间不存在");
+                    plugin.getLang().send(player, "common.room_not_found");
                     return;
                 }
                 String rmName = rmRoom.getName();
                 plugin.getRoomStorage().removeRoom(args[2]);
                 plugin.log(player, "管理员强制删除房间: " + rmName + " (ID: " + args[2] + ")");
-                player.sendMessage("§c已强制删除房间 " + rmName);
+                plugin.getLang().send(player, "command.admin.remove_success", "room", rmName);
                 break;
 
             case "reload":
                 plugin.reloadConfig();
                 plugin.getRoomStorage().loadAll();
                 plugin.log(player, "管理员重新加载配置和房间数据");
-                player.sendMessage("§a配置和房间数据已重新加载");
-                player.sendMessage("§7请重新打开房间列表以查看更新");
+                plugin.getLang().send(player, "command.admin.reload_success");
+                plugin.getLang().send(player, "command.admin.reload_hint");
                 break;
 
             default:
-                player.sendMessage("§c未知管理命令");
+                plugin.getLang().send(player, "command.admin.unknown");
                 break;
         }
     }
@@ -621,23 +625,23 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
      */
     private void handleRate(Player player, String[] args) {
         if (args.length < 3) {
-            player.sendMessage("§c用法: /ht rate <房间ID> <分数1-5> [评语]");
+            plugin.getLang().send(player, "command.rate.usage");
             return;
         }
         HotelRoom room = plugin.getRoomStorage().getRoom(args[1]);
         if (room == null) {
-            player.sendMessage("§c房间不存在");
+            plugin.getLang().send(player, "common.room_not_found");
             return;
         }
         int score;
         try {
             score = Integer.parseInt(args[2]);
         } catch (NumberFormatException e) {
-            player.sendMessage("§c分数必须是 1-5 的整数");
+            plugin.getLang().send(player, "command.rate.invalid_score");
             return;
         }
         if (score < 1 || score > 5) {
-            player.sendMessage("§c分数必须是 1-5 的整数");
+            plugin.getLang().send(player, "command.rate.invalid_score");
             return;
         }
 
@@ -655,13 +659,13 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
             }
         }
         if (!everStayed) {
-            player.sendMessage("§c你还没有入住过这个房间，无法评分");
+            plugin.getLang().send(player, "command.rate.never_stayed");
             return;
         }
 
         String comment = args.length >= 4 ? String.join(" ", Arrays.copyOfRange(args, 3, args.length)) : "";
         if (comment.length() > 100) {
-            player.sendMessage("§c评语最长 100 个字符");
+            plugin.getLang().send(player, "command.rate.comment_too_long");
             return;
         }
 
@@ -676,9 +680,10 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
         plugin.getRatingStorage().add(r);
 
         plugin.log(player, "评分: " + room.getName() + " (ID: " + room.getId() + ") " + score + " 星" + (comment.isEmpty() ? "" : " 评语:" + comment));
-        player.sendMessage((wasRated ? "§a已更新评分" : "§a评分成功") + " §e" + room.getName() + " §7" + r.getStars());
+        plugin.getLang().send(player, wasRated ? "command.rate.updated" : "command.rate.success",
+                "room", room.getName(), "stars", r.getStars());
         if (!comment.isEmpty()) {
-            player.sendMessage("§7评语: §f" + comment);
+            plugin.getLang().send(player, "command.rate.comment", "comment", comment);
         }
     }
 
@@ -687,31 +692,31 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
      */
     private void handleExtend(Player player, String[] args) {
         if (args.length < 3) {
-            player.sendMessage("§c用法: /ht extend <房间ID> <续费分钟>");
+            plugin.getLang().send(player, "command.extend.usage");
             return;
         }
         HotelRoom room = plugin.getRoomStorage().getRoom(args[1]);
         if (room == null) {
-            player.sendMessage("§c房间不存在");
+            plugin.getLang().send(player, "common.room_not_found");
             return;
         }
         if (room.getCurrentGuest() == null || !room.getCurrentGuest().equals(player.getUniqueId())) {
-            player.sendMessage("§c你不是该房间的入住客人，无法续费");
+            plugin.getLang().send(player, "command.extend.not_guest");
             return;
         }
         int minutes;
         try {
             minutes = Integer.parseInt(args[2]);
         } catch (NumberFormatException e) {
-            player.sendMessage("§c续费分钟数必须是整数");
+            plugin.getLang().send(player, "command.extend.invalid_minutes");
             return;
         }
         if (minutes <= 0) {
-            player.sendMessage("§c续费分钟数必须大于 0");
+            plugin.getLang().send(player, "command.extend.minutes_positive");
             return;
         }
         if (minutes > 1440) {
-            player.sendMessage("§c单次最多续费 24 小时（1440 分钟）");
+            plugin.getLang().send(player, "command.extend.max_minutes");
             return;
         }
 
@@ -727,7 +732,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
             if (duration == -1) duration = 0;
         }
         if (duration <= 0) {
-            player.sendMessage("§c该房间不限时，无需续费");
+            plugin.getLang().send(player, "command.extend.unlimited");
             return;
         }
 
@@ -738,12 +743,13 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
         if (plugin.getEconomyManager().isEnabled()) {
             double balance = plugin.getEconomyManager().getBalance(player);
             if (balance < cost) {
-                player.sendMessage("§c余额不足！续费需要 " + plugin.getEconomyManager().format(cost)
-                        + "，你只有 " + plugin.getEconomyManager().format(balance));
+                plugin.getLang().send(player, "command.extend.insufficient_funds",
+                        "need", plugin.getEconomyManager().format(cost),
+                        "bal", plugin.getEconomyManager().format(balance));
                 return;
             }
             if (!plugin.getEconomyManager().withdraw(player, cost)) {
-                player.sendMessage("§c扣款失败");
+                plugin.getLang().send(player, "command.extend.withdraw_failed");
                 return;
             }
             // 续费流水
@@ -770,10 +776,11 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
 
         plugin.log(player, "续费: " + room.getName() + " (ID: " + room.getId() + ") 延长 " + minutes + " 分钟, 花费 "
                 + (plugin.getEconomyManager().isEnabled() ? plugin.getEconomyManager().format(cost) : "0"));
-        player.sendMessage("§a续费成功！房间 §e" + room.getName() + "§a 已延长 §e" + minutes + " §a分钟");
+        plugin.getLang().send(player, "command.extend.success", "room", room.getName(), "minutes", minutes);
         long newExpire = room.getCheckinTime() + (duration + minutes) * 60 * 1000L;
-        player.sendMessage("§7新的到期时间: §e" + java.text.SimpleDateFormat.getTimeInstance(java.text.DateFormat.SHORT)
-                .format(new java.util.Date(newExpire)));
+        plugin.getLang().send(player, "command.extend.new_expire", "time",
+                java.text.SimpleDateFormat.getTimeInstance(java.text.DateFormat.SHORT)
+                        .format(new java.util.Date(newExpire)));
     }
 
     /**
@@ -783,38 +790,42 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
         if (args.length >= 2) {
             HotelRoom room = plugin.getRoomStorage().getRoom(args[1]);
             if (room == null) {
-                player.sendMessage("§c房间不存在");
+                plugin.getLang().send(player, "common.room_not_found");
                 return;
             }
             java.util.List<com.hotels.model.Rating> list = plugin.getRatingStorage().getByRoom(room.getId());
-            player.sendMessage("§6=== 房间评分: §e" + room.getName() + " §6===");
+            plugin.getLang().send(player, "command.ratings.title", "room", room.getName());
             if (list.isEmpty()) {
-                player.sendMessage("§7暂无评分");
+                plugin.getLang().send(player, "command.ratings.none");
                 return;
             }
-            player.sendMessage("§7平均分: §e" + plugin.getRatingStorage().getAverage(room.getId()) + " §7(共 " + list.size() + " 条)");
+            plugin.getLang().send(player, "command.ratings.average",
+                    "avg", plugin.getRatingStorage().getAverage(room.getId()), "count", list.size());
             for (com.hotels.model.Rating r : list) {
                 String time = new java.text.SimpleDateFormat("MM-dd HH:mm")
                         .format(new java.util.Date(r.getTime()));
-                player.sendMessage(" §7[" + time + "] §e" + r.getGuestName() + " §f" + r.getStars()
-                        + (r.getComment() != null && !r.getComment().isEmpty() ? " §7- " + r.getComment() : ""));
+                boolean hasComment = r.getComment() != null && !r.getComment().isEmpty();
+                plugin.getLang().send(player, hasComment ? "command.ratings.line_comment" : "command.ratings.line",
+                        "time", time, "guest", r.getGuestName(), "stars", r.getStars(),
+                        "comment", hasComment ? r.getComment() : "");
             }
             return;
         }
 
         // 无参数：显示自己房间的评分概况
-        player.sendMessage("§6=== 我的房间评分概况 ===");
+        plugin.getLang().send(player, "command.ratings.my_title");
         boolean any = false;
         for (HotelRoom room : plugin.getRoomStorage().getAllRooms()) {
             if (!room.getOwner().equals(player.getUniqueId())) continue;
             int count = plugin.getRatingStorage().countByRoom(room.getId());
             if (count == 0) continue;
             any = true;
-            player.sendMessage(" §e" + room.getName() + " §7(ID: " + room.getId() + ") "
-                    + "§f" + plugin.getRatingStorage().getAverage(room.getId()) + " 分 §7(" + count + " 条评分)");
+            plugin.getLang().send(player, "command.ratings.my_line",
+                    "room", room.getName(), "id", room.getId(),
+                    "avg", plugin.getRatingStorage().getAverage(room.getId()), "count", count);
         }
         if (!any) {
-            player.sendMessage("§7你的房间还没有评分");
+            plugin.getLang().send(player, "command.ratings.my_none");
         }
     }
 
@@ -823,31 +834,32 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
      */
     private void handleClaim(Player player) {
         if (!plugin.getConfig().getBoolean("economy.escrow-mode", false)) {
-            player.sendMessage("§7当前为实时到账模式，收益已直接发放到钱包，无需提现");
+            plugin.getLang().send(player, "command.claim.realtime");
             return;
         }
         if (!plugin.getEconomyManager().isEnabled()) {
-            player.sendMessage("§c经济系统未启用，无法提现");
+            plugin.getLang().send(player, "command.claim.economy_disabled");
             return;
         }
         double pending = plugin.getEscrowStorage().getPending(player.getUniqueId().toString());
         if (pending <= 0) {
-            player.sendMessage("§7你没有待提现的收益");
+            plugin.getLang().send(player, "command.claim.none");
             return;
         }
         if (plugin.getEconomyManager().deposit(player, pending)) {
             plugin.getEscrowStorage().completeWithdrawal(player.getUniqueId().toString(), player.getName(), pending);
             plugin.log(player, "提现收益: " + pending + " 到钱包");
-            player.sendMessage("§a提现成功！已发放 §e" + plugin.getEconomyManager().format(pending) + " §a到你的钱包");
+            plugin.getLang().send(player, "command.claim.success",
+                    "amount", plugin.getEconomyManager().format(pending));
         } else {
-            player.sendMessage("§c提现失败，请查看控制台日志");
+            plugin.getLang().send(player, "command.claim.failed");
         }
     }
 
     private void handleTeleport(Player player) {
         HotelRoom room = plugin.getRoomStorage().getRoomByGuest(player.getUniqueId());
         if (room == null) {
-            player.sendMessage("§c你没有入住任何房间");
+            plugin.getLang().send(player, "checkin.not_checked_in");
             return;
         }
 
@@ -858,50 +870,50 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
         );
         com.hotels.util.SchedulerCompat.teleport(player, loc);
         plugin.log(player, "传送回已入住房间: " + room.getName());
-        player.sendMessage("§a已传送到房间 §e" + room.getName());
+        plugin.getLang().send(player, "command.teleport.success", "room", room.getName());
     }
 
     private void handleDebug(Player player) {
         if (!player.hasPermission("hotels.admin")) {
-            player.sendMessage("§c你没有管理员权限");
+            plugin.getLang().send(player, "command.admin.no_permission");
             return;
         }
 
         boolean newState = !plugin.isDebugMode();
         plugin.setDebugMode(newState);
         if (newState) {
-            player.sendMessage("§a调试模式已开启");
-            player.sendMessage("§7调试日志将发送到控制台和所有在线OP");
+            plugin.getLang().send(player, "command.debug.enabled");
+            plugin.getLang().send(player, "command.debug.enabled_hint");
             plugin.log(player, "调试模式已开启");
         } else {
             plugin.log(player, "调试模式已关闭");
-            player.sendMessage("§c调试模式已关闭");
+            plugin.getLang().send(player, "command.debug.disabled");
         }
     }
 
     private void handleElevator(Player player) {
         if (!player.isOp() && !player.hasPermission("hotels.admin")) {
-            player.sendMessage("§c你没有权限使用此指令");
+            plugin.getLang().send(player, "command.elevator.no_permission");
             return;
         }
         boolean newState = !plugin.isElevatorEnabled();
         plugin.setElevatorEnabled(newState);
         if (newState) {
-            player.sendMessage("§a铁块电梯已全局启用");
-            player.sendMessage("§7所有玩家站在铁块上跳跃向上传送，潜行向下传送");
+            plugin.getLang().send(player, "command.elevator.enabled");
+            plugin.getLang().send(player, "command.elevator.enabled_hint");
             plugin.log(player, "铁块电梯已全局启用");
         } else {
             plugin.log(player, "铁块电梯已全局禁用");
-            player.sendMessage("§c铁块电梯已全局禁用");
+            plugin.getLang().send(player, "command.elevator.disabled");
         }
     }
 
     private String getStatusDisplay(HotelRoom.RoomStatus status) {
         switch (status) {
-            case AVAILABLE: return "§a空闲";
-            case OCCUPIED: return "§c已入住";
-            case MAINTENANCE: return "§7维护中";
-            default: return "§7未知";
+            case AVAILABLE: return plugin.getLang().get("command.status.available");
+            case OCCUPIED: return plugin.getLang().get("command.status.occupied");
+            case MAINTENANCE: return plugin.getLang().get("command.status.maintenance");
+            default: return plugin.getLang().get("command.status.unknown");
         }
     }
 
@@ -922,41 +934,45 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
             case "list": {
                 List<com.hotels.model.RoomPreset> presets = plugin.getPresetStorage().getAllPresets();
                 if (presets.isEmpty()) {
-                    player.sendMessage("§7当前没有装修预设");
+                    plugin.getLang().send(player, "command.preset.none");
                     return;
                 }
-                player.sendMessage("§6===== 装修预设列表 (" + presets.size() + ") =====");
+                plugin.getLang().send(player, "command.preset.list_title", "count", presets.size());
                 for (com.hotels.model.RoomPreset p : presets) {
-                    player.sendMessage("§e" + p.getName()
-                            + " §7尺寸: §f" + p.getSizeDisplay()
-                            + (p.getRotation() > 0 ? " §7旋转: §f" + p.getRotation() + "°" : "")
-                            + " §7世界: §f" + p.getWorld());
+                    if (p.getRotation() > 0) {
+                        plugin.getLang().send(player, "command.preset.list_line_rot",
+                                "name", p.getName(), "size", p.getSizeDisplay(),
+                                "rotation", p.getRotation(), "world", p.getWorld());
+                    } else {
+                        plugin.getLang().send(player, "command.preset.list_line",
+                                "name", p.getName(), "size", p.getSizeDisplay(), "world", p.getWorld());
+                    }
                 }
-                player.sendMessage("§8应用: /ht preset apply <名称> [角度0/90/180/270] [房间ID]");
+                plugin.getLang().send(player, "command.preset.list_hint");
                 break;
             }
 
             case "save": {
                 if (!admin) {
-                    player.sendMessage("§c保存预设需要管理员权限 (hotels.admin)");
+                    plugin.getLang().send(player, "command.preset.save_no_permission");
                     return;
                 }
                 if (args.length < 3) {
-                    player.sendMessage("§c用法: /ht preset save <预设名称>");
+                    plugin.getLang().send(player, "command.preset.save_usage");
                     return;
                 }
                 String name = args[2];
                 if (!name.matches("[\\w\\u4e00-\\u9fa5-]{1,24}")) {
-                    player.sendMessage("§c预设名称仅限 1-24 位中文/字母/数字/下划线/横线");
+                    plugin.getLang().send(player, "command.preset.invalid_name");
                     return;
                 }
                 com.hotels.model.HotelRoom room = plugin.getRoomStorage().getRoomAtLocation(player.getLocation());
                 if (room == null) {
-                    player.sendMessage("§c请站在要保存为预设的房间内部");
+                    plugin.getLang().send(player, "command.preset.not_in_room");
                     return;
                 }
                 if (!room.getOwner().equals(player.getUniqueId()) && !admin) {
-                    player.sendMessage("§c你不是这个房间的房主");
+                    plugin.getLang().send(player, "common.not_room_owner");
                     return;
                 }
                 plugin.getPresetManager().savePreset(player, room, name);
@@ -965,13 +981,13 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
 
             case "apply": {
                 if (args.length < 3) {
-                    player.sendMessage("§c用法: /ht preset apply <预设名称> [旋转角度0/90/180/270] [房间ID]");
+                    plugin.getLang().send(player, "command.preset.apply_usage");
                     return;
                 }
                 String presetName = args[2];
                 com.hotels.model.RoomPreset preset = plugin.getPresetStorage().getPreset(presetName);
                 if (preset == null) {
-                    player.sendMessage("§c预设 §e" + presetName + " §c不存在");
+                    plugin.getLang().send(player, "command.preset.not_found", "name", presetName);
                     return;
                 }
 
@@ -1017,21 +1033,21 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
                 if (roomIdArg != null) {
                     room = plugin.getRoomStorage().getRoom(roomIdArg);
                     if (room == null) {
-                        player.sendMessage("§c房间不存在");
+                        plugin.getLang().send(player, "common.room_not_found");
                         return;
                     }
                     if (!room.getOwner().equals(player.getUniqueId()) && !admin) {
-                        player.sendMessage("§c你不是这个房间的房主");
+                        plugin.getLang().send(player, "common.not_room_owner");
                         return;
                     }
                 } else {
                     room = plugin.getRoomStorage().getRoomAtLocation(player.getLocation());
                     if (room == null) {
-                        player.sendMessage("§c请站在房间内部，或指定房间ID: /ht preset apply <名称> [旋转] <房间ID>");
+                        plugin.getLang().send(player, "command.preset.apply_not_in_room");
                         return;
                     }
                     if (!room.getOwner().equals(player.getUniqueId()) && !admin) {
-                        player.sendMessage("§c你不是这个房间的房主");
+                        plugin.getLang().send(player, "common.not_room_owner");
                         return;
                     }
                 }
@@ -1045,21 +1061,21 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
                 if (args.length >= 3) {
                     room = plugin.getRoomStorage().getRoom(args[2]);
                     if (room == null) {
-                        player.sendMessage("§c房间不存在");
+                        plugin.getLang().send(player, "common.room_not_found");
                         return;
                     }
                     if (!room.getOwner().equals(player.getUniqueId()) && !admin) {
-                        player.sendMessage("§c你不是这个房间的房主");
+                        plugin.getLang().send(player, "common.not_room_owner");
                         return;
                     }
                 } else {
                     room = plugin.getRoomStorage().getRoomAtLocation(player.getLocation());
                     if (room == null) {
-                        player.sendMessage("§c请站在房间内部，或指定房间ID: /ht preset undo <房间ID>");
+                        plugin.getLang().send(player, "command.preset.undo_not_in_room");
                         return;
                     }
                     if (!room.getOwner().equals(player.getUniqueId()) && !admin) {
-                        player.sendMessage("§c你不是这个房间的房主");
+                        plugin.getLang().send(player, "common.not_room_owner");
                         return;
                     }
                 }
@@ -1069,18 +1085,18 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
 
             case "delete": {
                 if (!admin) {
-                    player.sendMessage("§c删除预设需要管理员权限 (hotels.admin)");
+                    plugin.getLang().send(player, "command.preset.delete_no_permission");
                     return;
                 }
                 if (args.length < 3) {
-                    player.sendMessage("§c用法: /ht preset delete <预设名称>");
+                    plugin.getLang().send(player, "command.preset.delete_usage");
                     return;
                 }
                 if (plugin.getPresetStorage().deletePreset(args[2])) {
                     plugin.log(player, "删除装修预设: " + args[2]);
-                    player.sendMessage("§c装修预设 §e" + args[2] + " §c已删除");
+                    plugin.getLang().send(player, "command.preset.deleted", "name", args[2]);
                 } else {
-                    player.sendMessage("§c预设 §e" + args[2] + " §c不存在");
+                    plugin.getLang().send(player, "command.preset.not_found", "name", args[2]);
                 }
                 break;
             }
@@ -1092,17 +1108,17 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendPresetHelp(Player player, boolean admin) {
-        player.sendMessage("§6===== 装修预设系统 =====");
-        player.sendMessage("§7说明: 将房间装修保存为模板，支持旋转后应用到相同尺寸的房间");
+        plugin.getLang().send(player, "command.preset.help_title");
+        plugin.getLang().send(player, "command.preset.help_desc");
         if (admin) {
-            player.sendMessage("§8/ht preset save <名称>      §7- 将当前所在房间保存为预设");
-            player.sendMessage("§8/ht preset delete <名称>   §7- 删除预设");
+            plugin.getLang().send(player, "command.preset.help_save");
+            plugin.getLang().send(player, "command.preset.help_delete");
         }
-        player.sendMessage("§8/ht preset list                          §7- 查看全部预设");
-        player.sendMessage("§8/ht preset apply <名称> [角度0/90/180/270] [房间ID] [confirm] §7- 应用预设到房间");
-        player.sendMessage("§8/ht preset undo [房间ID]                 §7- 回滚最近一次应用，恢复原装修");
-        player.sendMessage("§7提示: 角度不填则使用保存时的旋转，仅围绕 Y 轴顺时针旋转");
-        player.sendMessage("§7提示: 房间已有装修时需加 §econfirm §7参数确认覆盖");
+        plugin.getLang().send(player, "command.preset.help_list");
+        plugin.getLang().send(player, "command.preset.help_apply");
+        plugin.getLang().send(player, "command.preset.help_undo");
+        plugin.getLang().send(player, "command.preset.help_hint1");
+        plugin.getLang().send(player, "command.preset.help_hint2");
     }
 
     @Override

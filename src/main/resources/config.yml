@@ -3,6 +3,10 @@
 # ============================================
 ScriptIrc-config-version: 1
 
+# 插件显示语言：zh_CN（简体中文）/ en_US（English）
+# 语言文件位于 plugins/HotelsX/lang/，可自行修改文案
+language: zh_CN
+
 # 每个玩家最大房间数
 max-rooms-per-player: 10
 

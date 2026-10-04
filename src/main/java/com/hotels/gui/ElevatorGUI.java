@@ -24,6 +24,7 @@
  */
 package com.hotels.gui;
 
+import com.hotels.HotelsPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -104,7 +105,7 @@ public class ElevatorGUI {
         }
 
         if (floors.size() <= 1) {
-            player.sendMessage("§c当前电梯列只有一个楼层，没有可选楼层");
+            HotelsPlugin.getInstance().getLang().send(player, "gui.elevator.only_one_floor");
             return;
         }
 
@@ -127,7 +128,7 @@ public class ElevatorGUI {
         }
 
         int size = Math.min(54, Math.max(9, ((visible.size() + 8) / 9) * 9));
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME, visible), size, "§8§l电梯选层");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME, visible), size, HotelsPlugin.getInstance().getLang().get("gui.elevator.title"));
 
         // 从底部往顶部摆（低楼层在下，高楼层在上），符合电梯直觉
         // 先反转：把最高层放最后一行最右，最低层放第一行最左——不好
@@ -161,24 +162,24 @@ public class ElevatorGUI {
 
         if (floor.isCurrent) {
             mat = Material.GOLD_BLOCK;
-            name = "§6§l当前层 §7(Y: " + floor.y + ")";
-            lore.add("§7你正在这一层");
+            name = HotelsPlugin.getInstance().getLang().get("gui.elevator.current_floor", "y", floor.y);
+            lore.add(HotelsPlugin.getInstance().getLang().get("gui.elevator.current_floor_lore"));
         } else if (!floor.safe) {
             mat = Material.REDSTONE_BLOCK;
             name = "§cY: " + floor.y;
-            lore.add("§c此楼层空间不足，传送可能窒息");
+            lore.add(HotelsPlugin.getInstance().getLang().get("gui.elevator.unsafe"));
         } else if (diff > 0) {
             mat = Material.IRON_BLOCK;
             name = "§fY: " + floor.y;
-            lore.add("§a上方 " + diff + " 格");
+            lore.add(HotelsPlugin.getInstance().getLang().get("gui.elevator.above", "n", diff));
         } else {
             mat = Material.IRON_BLOCK;
             name = "§fY: " + floor.y;
-            lore.add("§7下方 " + Math.abs(diff) + " 格");
+            lore.add(HotelsPlugin.getInstance().getLang().get("gui.elevator.below", "n", Math.abs(diff)));
         }
 
         lore.add("");
-        lore.add("§8点击传送到此层");
+        lore.add(HotelsPlugin.getInstance().getLang().get("gui.elevator.click_teleport"));
 
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();

@@ -73,7 +73,7 @@ public class DoorGuardListener implements Listener {
             if (isOwner || isGuest) return;
 
             event.setCancelled(true);
-            player.sendMessage("§c该房间的门已上锁，只有房主和入住客人可以打开");
+            plugin.getLang().send(player, "listener.door.locked");
             return;
         }
     }

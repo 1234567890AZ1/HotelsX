@@ -75,7 +75,7 @@ public class ElevatorListener implements Listener {
                     player.getWorld().playSound(target, Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.0f);
                     plugin.log(player, "使用电梯向上: " + player.getName());
                 } else {
-                    player.sendMessage("§c上方没有找到铁块");
+                    plugin.getLang().send(player, "listener.elevator.no_block_up");
                 }
             }
         }
@@ -113,7 +113,7 @@ public class ElevatorListener implements Listener {
             player.getWorld().playSound(target, Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.0f);
             plugin.log(player, "使用电梯向下: " + player.getName());
         } else {
-            player.sendMessage("§c下方没有找到铁块");
+            plugin.getLang().send(player, "listener.elevator.no_block_down");
         }
     }
 
@@ -142,7 +142,7 @@ public class ElevatorListener implements Listener {
         }
         Location clicked = event.getClickedBlock().getLocation();
         if (!canAccessBlock(player, clicked)) {
-            player.sendMessage("§c你无法使用此处的电梯");
+            plugin.getLang().send(player, "listener.elevator.cannot_use");
             return;
         }
 

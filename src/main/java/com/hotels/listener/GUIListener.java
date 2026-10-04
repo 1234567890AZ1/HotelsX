@@ -95,15 +95,15 @@ public class GUIListener implements Listener {
                 break;
             case 15:
                 if (!player.hasPermission("hotels.create")) {
-                    player.sendMessage("§c你没有权限创建房间");
+                    plugin.getLang().send(player, "common.no_permission_create");
                     return;
                 }
                 plugin.log(player, "查看创建房间说明");
                 player.closeInventory();
-                player.sendMessage("§e=== 创建房间 ===");
-                player.sendMessage("§71. 手持木斧 §e//wand §7选择区域的两个对角点");
-                player.sendMessage("§72. 站在传送点位置输入 §e/ht create <房间名> §7创建");
-                player.sendMessage("§73. 创建后可用 §e/ht manage <ID> §7管理房间");
+                plugin.getLang().send(player, "listener.gui.create_room_header");
+                plugin.getLang().send(player, "listener.gui.create_room_line1");
+                plugin.getLang().send(player, "listener.gui.create_room_line2");
+                plugin.getLang().send(player, "listener.gui.create_room_line3");
                 break;
             case 29:
                 plugin.log(player, "打开合集管理界面");
@@ -144,7 +144,7 @@ public class GUIListener implements Listener {
         } else if (guiName.equals(CollectionGUI.GUI_NAME + ":my")) {
             if (slot == 4) {
                 player.closeInventory();
-                player.sendMessage("§e请输入要搜索的酒店名称:");
+                plugin.getLang().send(player, "listener.gui.enter_search_hotel");
                 plugin.getChatInputHandler().expectInput(player, "mycollection_search");
                 return;
             }
@@ -189,7 +189,7 @@ public class GUIListener implements Listener {
 
                 if (slot == 3) {
                     player.closeInventory();
-                    player.sendMessage("§e请输入要搜索的房间名称:");
+                    plugin.getLang().send(player, "listener.gui.enter_search_room");
                     plugin.getChatInputHandler().expectInput(player, "managecollection_search:" + col.getId());
                     return;
                 }
@@ -217,7 +217,7 @@ public class GUIListener implements Listener {
 
             if (slot == 4) {
                 player.closeInventory();
-                player.sendMessage("§e请输入要搜索的酒店名称:");
+                plugin.getLang().send(player, "listener.gui.enter_search_hotel");
                 plugin.getChatInputHandler().expectInput(player, "collection_search:" + page);
                 return;
             }
@@ -242,7 +242,7 @@ public class GUIListener implements Listener {
                 case 13:
                     plugin.log(player, "开始创建合集");
                     player.closeInventory();
-                    player.sendMessage("§e请输入新酒店合集的名称:");
+                    plugin.getLang().send(player, "listener.gui.enter_new_collection_name");
                     plugin.getChatInputHandler().expectInput(player, "createcollection");
                     break;
                 case 15:
@@ -271,7 +271,7 @@ public class GUIListener implements Listener {
                     } else if (event.isRightClick()) {
                         plugin.log(player, "准备删除合集: " + col.getName());
                         player.closeInventory();
-                        player.sendMessage("§c确认删除合集 §e" + col.getName() + "§c？在聊天框输入 §e确认 §c或 §e取消");
+                        plugin.getLang().send(player, "listener.gui.confirm_delete_collection", "name", col.getName());
                         plugin.getChatInputHandler().expectInput(player, "deletecollection:" + col.getId());
                     }
                     return;
@@ -288,21 +288,21 @@ public class GUIListener implements Listener {
                 if (target == null) return;
 
                 if (!col.getOwner().equals(player.getUniqueId())) {
-                    player.sendMessage("§c只有房主可以管理管理员");
+                    plugin.getLang().send(player, "listener.gui.only_owner_manage_admin");
                     return;
                 }
                 if (col.getOwner().equals(target.getUniqueId())) {
-                    player.sendMessage("§c不能操作房主");
+                    plugin.getLang().send(player, "listener.gui.cannot_operate_owner");
                     return;
                 }
                 if (col.getAdmins().contains(target.getUniqueId().toString())) {
                     col.removeAdmin(target.getUniqueId());
                     plugin.log(player, "移除合集管理员: " + target.getName() + " 从 " + col.getName());
-                    player.sendMessage("§c已移除管理员 §e" + target.getName());
+                    plugin.getLang().send(player, "listener.gui.admin_removed", "name", target.getName());
                 } else {
                     col.addAdmin(target.getUniqueId());
                     plugin.log(player, "添加合集管理员: " + target.getName() + " 到 " + col.getName());
-                    player.sendMessage("§a已添加 §e" + target.getName() + " §a为管理员");
+                    plugin.getLang().send(player, "listener.gui.admin_added", "name", target.getName());
                 }
                 plugin.getRoomStorage().saveCollection(col);
                 CollectionGUI.openAdminManage(player, col, plugin);
@@ -314,7 +314,7 @@ public class GUIListener implements Listener {
             String itemName = ChatColor.stripColor(item.getItemMeta().getDisplayName());
             if (itemName.contains("管理员管理")) {
                 if (!col.canManage(player.getUniqueId())) {
-                    player.sendMessage("§c你没有权限管理此合集");
+                    plugin.getLang().send(player, "common.no_permission_manage_collection");
                     return;
                 }
                 plugin.log(player, "打开合集管理员管理: " + col.getName());
@@ -324,12 +324,12 @@ public class GUIListener implements Listener {
 
             if (itemName.contains("一键定价")) {
                 if (!col.canManage(player.getUniqueId())) {
-                    player.sendMessage("§c你没有权限管理此合集");
+                    plugin.getLang().send(player, "common.no_permission_manage_collection");
                     return;
                 }
                 plugin.log(player, "开始合集一键定价: " + col.getName());
                 player.closeInventory();
-                player.sendMessage("§e请输入合集内所有房间的统一价格（数字）:");
+                plugin.getLang().send(player, "listener.gui.enter_collection_price");
                 plugin.getChatInputHandler().expectInput(player, "setcollectionprice:" + col.getId());
                 return;
             }
@@ -354,11 +354,11 @@ public class GUIListener implements Listener {
                         if (col.getRoomIds().contains(room.getId())) {
                             col.removeRoom(room.getId());
                             plugin.log(player, "从合集移出房间: " + room.getName() + " 从 " + col.getName());
-                            player.sendMessage("§c已从合集移出房间 §e" + room.getName());
+                            plugin.getLang().send(player, "listener.gui.room_removed_from_collection", "name", room.getName());
                         } else {
                             col.addRoom(room.getId());
                             plugin.log(player, "添加房间到合集: " + room.getName() + " 到 " + col.getName());
-                            player.sendMessage("§a已添加房间 §e" + room.getName() + " §a到合集");
+                            plugin.getLang().send(player, "listener.gui.room_added_to_collection", "name", room.getName());
                         }
                         plugin.getRoomStorage().saveCollection(col);
                         CollectionGUI.openManageCollection(player, col, plugin, page);
@@ -405,7 +405,7 @@ public class GUIListener implements Listener {
 
         if (slot == 5) {
             player.closeInventory();
-            player.sendMessage("§e请输入要搜索的房间名称或ID:");
+            plugin.getLang().send(player, "listener.gui.enter_search_room_id");
             plugin.getChatInputHandler().expectInput(player, "myrooms_search");
             return;
         }
@@ -426,7 +426,7 @@ public class GUIListener implements Listener {
                 } else if (event.isRightClick()) {
                     plugin.log(player, "准备删除房间: " + room.getName());
                     player.closeInventory();
-                    player.sendMessage("§c确认删除房间 §e" + room.getName() + "§c？在聊天框输入 §e确认 §c或 §e取消");
+                    plugin.getLang().send(player, "listener.gui.confirm_delete_room", "name", room.getName());
                     plugin.getChatInputHandler().expectInput(player, "deleteroom:" + room.getId());
                 }
                 return;
@@ -489,7 +489,7 @@ public class GUIListener implements Listener {
 
         if (slot == 5) {
             player.closeInventory();
-            player.sendMessage("§e请输入要搜索的房间名称或ID:");
+            plugin.getLang().send(player, "listener.gui.enter_search_room_id");
             plugin.getChatInputHandler().expectInput(player, "browse_search");
             return;
         }
@@ -541,7 +541,7 @@ public class GUIListener implements Listener {
 
         HotelRoom targetRoom = holder.getData(HotelRoom.class);
         if (targetRoom == null) {
-            player.sendMessage("§c房间数据异常");
+            plugin.getLang().send(player, "listener.gui.room_data_error");
             player.closeInventory();
             return;
         }
@@ -550,7 +550,7 @@ public class GUIListener implements Listener {
             case 10:
                 player.closeInventory();
                 plugin.log(player, "准备设置房间价格: " + targetRoom.getName());
-                player.sendMessage("§e请输入新价格（数字）:");
+                plugin.getLang().send(player, "listener.gui.enter_new_price");
                 plugin.getChatInputHandler().expectInput(player, "setprice:" + targetRoom.getId());
                 break;
             case 11:
@@ -559,11 +559,11 @@ public class GUIListener implements Listener {
                     targetRoom.clearDiscount();
                     plugin.getRoomStorage().saveRoom(targetRoom);
                     plugin.log(player, "取消房间折扣: " + targetRoom.getName());
-                    player.sendMessage("§a已取消折扣");
+                    plugin.getLang().send(player, "listener.gui.discount_cancelled");
                     RoomManageGUI.open(player, targetRoom, plugin);
                 } else {
                     plugin.log(player, "准备设置房间折扣: " + targetRoom.getName());
-                    player.sendMessage("§e请输入折扣价（数字）:");
+                    plugin.getLang().send(player, "listener.gui.enter_discount_price");
                     plugin.getChatInputHandler().expectInput(player, "setdiscountprice:" + targetRoom.getId());
                 }
                 break;
@@ -577,10 +577,10 @@ public class GUIListener implements Listener {
                     targetRoom.setPassword(null);
                     plugin.getRoomStorage().saveRoom(targetRoom);
                     plugin.log(player, "清除房间密码: " + targetRoom.getName());
-                    player.sendMessage("§a已清除房间密码");
+                    plugin.getLang().send(player, "listener.gui.password_cleared");
                 } else {
                     plugin.log(player, "准备设置房间密码: " + targetRoom.getName());
-                    player.sendMessage("§e请输入房间密码:");
+                    plugin.getLang().send(player, "listener.gui.enter_room_password");
                     plugin.getChatInputHandler().expectInput(player, "setpassword:" + targetRoom.getId());
                 }
                 break;
@@ -588,7 +588,7 @@ public class GUIListener implements Listener {
                 targetRoom.setLocked(!targetRoom.isLocked());
                 plugin.getRoomStorage().saveRoom(targetRoom);
                 plugin.log(player, "房间" + (targetRoom.isLocked() ? "锁定" : "解锁") + ": " + targetRoom.getName());
-                player.sendMessage("§a房间已" + (targetRoom.isLocked() ? "锁定" : "解锁"));
+                plugin.getLang().send(player, targetRoom.isLocked() ? "listener.gui.room_locked" : "listener.gui.room_unlocked");
                 RoomManageGUI.open(player, targetRoom, plugin);
                 break;
             case 15:
@@ -600,12 +600,12 @@ public class GUIListener implements Listener {
                         targetRoom.setStatus(HotelRoom.RoomStatus.AVAILABLE);
                         break;
                     case OCCUPIED:
-                        player.sendMessage("§c房间已入住，无法切换状态");
+                        plugin.getLang().send(player, "listener.gui.room_occupied_cannot_switch");
                         return;
                 }
                 plugin.getRoomStorage().saveRoom(targetRoom);
                 plugin.log(player, "房间状态更新为: " + targetRoom.getStatus() + " (" + targetRoom.getName() + ")");
-                player.sendMessage("§a房间状态已更新");
+                plugin.getLang().send(player, "listener.gui.room_status_updated");
                 RoomManageGUI.open(player, targetRoom, plugin);
                 break;
             case 21:
@@ -616,14 +616,14 @@ public class GUIListener implements Listener {
                 );
                 com.hotels.util.SchedulerCompat.teleport(player, loc);
                 plugin.log(player, "传送到房间: " + targetRoom.getName());
-                player.sendMessage("§a已传送到房间");
+                plugin.getLang().send(player, "listener.gui.teleported_to_room");
                 break;
             case 23:
                 if (targetRoom.isOccupied()) {
                     Player guest = plugin.getServer().getPlayer(targetRoom.getCurrentGuest());
                     String guestName = guest != null ? guest.getName() : targetRoom.getCurrentGuestName();
                     if (guest != null && guest.isOnline()) {
-                        guest.sendMessage("§c你被房主从房间 " + targetRoom.getName() + " 中踢出");
+                        plugin.getLang().send(guest, "listener.gui.kicked_by_owner", "room", targetRoom.getName());
                     }
                     targetRoom.setCurrentGuest(null);
                     targetRoom.setCurrentGuestName(null);
@@ -631,7 +631,7 @@ public class GUIListener implements Listener {
                     targetRoom.setCheckinTime(0);
                     plugin.getRoomStorage().saveRoom(targetRoom);
                     plugin.log(player, "踢出客人: " + guestName + " 从房间 " + targetRoom.getName());
-                    player.sendMessage("§a已踢出客人");
+                    plugin.getLang().send(player, "listener.gui.guest_kicked");
                     RoomManageGUI.open(player, targetRoom, plugin);
                 }
                 break;
@@ -665,14 +665,14 @@ public class GUIListener implements Listener {
             if (room.hasTag(tagName)) {
                 room.removeTag(tagName);
                 plugin.log(player, "移除房间标签: " + tagName + " 从 " + room.getName());
-                player.sendMessage("§c已移除标签 §e" + tagName);
+                plugin.getLang().send(player, "listener.gui.tag_removed", "tag", tagName);
             } else {
                 if (room.getTags().size() >= 3) {
-                    player.sendMessage("§c标签已达上限（最多3个）");
+                    plugin.getLang().send(player, "listener.gui.tag_limit");
                 } else {
                     room.addTag(tagName);
                     plugin.log(player, "添加房间标签: " + tagName + " 到 " + room.getName());
-                    player.sendMessage("§a已添加标签 §e" + tagName);
+                    plugin.getLang().send(player, "listener.gui.tag_added", "tag", tagName);
                 }
             }
             plugin.getRoomStorage().saveRoom(room);
@@ -681,16 +681,16 @@ public class GUIListener implements Listener {
     }
 
     private void sendHelp(Player player) {
-        player.sendMessage("§6=== 酒店系统帮助 ===");
-        player.sendMessage("§e/ht §7- 打开酒店菜单");
-        player.sendMessage("§e/ht create <名称> §7- 创建房间（需先选点）");
-        player.sendMessage("§e/ht manage <ID> §7- 管理房间");
-        player.sendMessage("§e/ht remove <ID> §7- 删除房间");
-        player.sendMessage("§e/ht list §7- 查看你的房间列表");
-        player.sendMessage("§e/ht tp §7- 传送回已入住的房间");
+        plugin.getLang().send(player, "listener.gui.help_header");
+        plugin.getLang().send(player, "listener.gui.help_menu");
+        plugin.getLang().send(player, "listener.gui.help_create");
+        plugin.getLang().send(player, "listener.gui.help_manage");
+        plugin.getLang().send(player, "listener.gui.help_remove");
+        plugin.getLang().send(player, "listener.gui.help_list");
+        plugin.getLang().send(player, "listener.gui.help_tp");
 
-        player.sendMessage("§e//wand §7- 获取选区工具（木斧）");
-        player.sendMessage("§e/ht admin §7- 管理命令");
+        plugin.getLang().send(player, "listener.gui.help_wand");
+        plugin.getLang().send(player, "listener.gui.help_admin");
     }
 
     private void handleAdminPanelClick(Player player, InventoryClickEvent event, String guiName) {
@@ -698,7 +698,7 @@ public class GUIListener implements Listener {
         ItemStack item = event.getCurrentItem();
 
         if (!player.hasPermission("hotels.admin")) {
-            player.sendMessage("§c你没有管理员权限");
+            plugin.getLang().send(player, "command.admin.no_permission");
             player.closeInventory();
             return;
         }
@@ -728,7 +728,7 @@ public class GUIListener implements Listener {
         if (slot == 47) {
             if (event.isShiftClick()) {
                 player.closeInventory();
-                player.sendMessage("§c确认删除所有房间？在聊天框输入 §e确认 §c或 §e取消");
+                plugin.getLang().send(player, "listener.gui.confirm_delete_all");
                 plugin.getChatInputHandler().expectInput(player, "admin_deleteall");
             }
             return;
@@ -737,14 +737,14 @@ public class GUIListener implements Listener {
         if (slot == 51) {
             plugin.getRoomStorage().loadAll();
             plugin.log(player, "管理员重新加载数据");
-            player.sendMessage("§a数据已重新加载");
+            plugin.getLang().send(player, "listener.gui.data_reloaded");
             AdminPanelGUI.open(player, page);
             return;
         }
 
         if (slot == 48) {
             player.closeInventory();
-            player.sendMessage("§e请输入要搜索的房间名称或ID:");
+            plugin.getLang().send(player, "listener.gui.enter_search_room_id");
             plugin.getChatInputHandler().expectInput(player, "admin_search:" + page);
             return;
         }
@@ -774,10 +774,10 @@ public class GUIListener implements Listener {
                     );
                     com.hotels.util.SchedulerCompat.teleport(player, loc);
                     plugin.log(player, "管理员传送: 到房间 " + room.getName());
-                    player.sendMessage("§a已传送到房间 " + room.getName());
+                    plugin.getLang().send(player, "listener.gui.admin_teleported", "room", room.getName());
                 } else if (event.isRightClick()) {
                     player.closeInventory();
-                    player.sendMessage("§c确认删除房间 §e" + room.getName() + "§c？在聊天框输入 §e确认 §c或 §e取消");
+                    plugin.getLang().send(player, "listener.gui.confirm_delete_room", "name", room.getName());
                     plugin.getChatInputHandler().expectInput(player, "admin_delete:" + room.getId() + ":" + page);
                 } else {
                     plugin.log(player, "管理员打开房间管理: " + room.getName());
@@ -804,13 +804,13 @@ public class GUIListener implements Listener {
 
         ElevatorGUI.FloorData floor = floors.get(idx);
         if (floor.isCurrent) {
-            player.sendMessage("§7你已经在这一层");
+            plugin.getLang().send(player, "listener.gui.elevator_already_here");
             return;
         }
 
         Location target = floor.getTeleportLocation(player);
         if (target == null) {
-            player.sendMessage("§c目标世界不存在");
+            plugin.getLang().send(player, "listener.gui.target_world_missing");
             return;
         }
 
@@ -821,6 +821,6 @@ public class GUIListener implements Listener {
         int diff = floor.y - ((int) player.getLocation().getY() - 1);
         String direction = diff > 0 ? "上升" : "下降";
         plugin.log(player, "电梯选层传送: " + direction + " 到 Y:" + floor.y);
-        player.sendMessage("§a" + direction + "到 Y: §e" + floor.y);
+        plugin.getLang().send(player, diff > 0 ? "listener.gui.elevator_moved_up" : "listener.gui.elevator_moved_down", "y", floor.y);
     }
 }

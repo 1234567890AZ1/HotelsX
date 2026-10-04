@@ -76,8 +76,7 @@ public class ShopContainerListener implements Listener {
             event.setCancelled(true);
             Player p = event.getPlayer();
             if (p != null) {
-                p.sendMessage("§c此容器已绑定为 Web 店面「" + shop.getDisplayNameSafe()
-                        + "」，无法拆除。请先在 Web 面板中删除该店铺");
+                plugin.getLang().send(p, "shop.container_bound", "name", shop.getDisplayNameSafe());
             }
             return;
         }

@@ -52,18 +52,18 @@ public class CheckinHandler {
     public void attemptCheckin(Player player, HotelRoom room) {
         // 检查房间状态
         if (!room.isAvailable()) {
-            player.sendMessage("§c该房间当前不可用");
+            plugin.getLang().send(player, "checkin.room_unavailable");
             return;
         }
 
         if (room.isLocked()) {
-            player.sendMessage("§c该房间已上锁");
+            plugin.getLang().send(player, "checkin.room_locked");
             return;
         }
 
         // 检查是否自己的房间
         if (room.getOwner().equals(player.getUniqueId())) {
-            player.sendMessage("§c你不能入住自己的房间");
+            plugin.getLang().send(player, "checkin.own_room");
             return;
         }
 
@@ -73,7 +73,7 @@ public class CheckinHandler {
         // 检查密码
         if (room.hasPassword() && !bypass) {
             // 需要输入密码
-            player.sendMessage("§e该房间需要密码才能入住，请输入 §6/ht checkin " + room.getId() + " <密码>");
+            plugin.getLang().send(player, "checkin.need_password", "id", room.getId());
             return;
         }
 
@@ -83,14 +83,15 @@ public class CheckinHandler {
             double currentPrice = room.getCurrentPrice();
             double balance = economy.getBalance(player);
             if (balance < currentPrice) {
-                player.sendMessage("§c余额不足！需要 " + plugin.getEconomyManager().format(currentPrice)
-                        + "，你只有 " + plugin.getEconomyManager().format(balance));
+                plugin.getLang().send(player, "checkin.insufficient_funds",
+                        "need", plugin.getEconomyManager().format(currentPrice),
+                        "bal", plugin.getEconomyManager().format(balance));
                 return;
             }
 
             // 扣款
             if (!economy.withdraw(player, currentPrice)) {
-                player.sendMessage("§c扣款失败");
+                plugin.getLang().send(player, "checkin.withdraw_failed");
                 return;
             }
 
@@ -142,8 +143,8 @@ public class CheckinHandler {
         com.hotels.util.SchedulerCompat.teleport(player, loc);
 
         plugin.log(player, "成功入住房间: " + room.getName() + " (ID: " + room.getId() + ")");
-        player.sendMessage("§a成功入住房间 §e" + room.getName() + "§a！");
-        player.sendMessage("§7输入 §e/ht checkout §7退房");
+        plugin.getLang().send(player, "checkin.success", "room", room.getName());
+        plugin.getLang().send(player, "checkin.checkout_hint");
 
         // 欢迎效果（标题 / ActionBar / 音效，可在 config.yml 关闭）
         sendWelcomeEffects(player, room);
@@ -165,9 +166,10 @@ public class CheckinHandler {
             long durationMs = duration * 60 * 1000L;
             long checkinTime = room.getCheckinTime();
             long expireTime = checkinTime + durationMs;
-            player.sendMessage("§e房间使用时限: " + duration + " 分钟");
-            player.sendMessage("§7将在 §e" + java.text.SimpleDateFormat.getTimeInstance(java.text.DateFormat.SHORT)
-                    .format(new java.util.Date(expireTime)) + " §7自动退房");
+            plugin.getLang().send(player, "checkin.duration", "minutes", duration);
+            plugin.getLang().send(player, "checkin.expire_at", "time",
+                    java.text.SimpleDateFormat.getTimeInstance(java.text.DateFormat.SHORT)
+                            .format(new java.util.Date(expireTime)));
 
             // 定时任务检查
             SchedulerCompat.runTaskLater(plugin, () -> {
@@ -178,7 +180,7 @@ public class CheckinHandler {
                         && current.getCurrentGuest().equals(player.getUniqueId())) {
                     Player p = Bukkit.getPlayer(player.getUniqueId());
                     if (p != null && p.isOnline()) {
-                        p.sendMessage("§c入住时间已到，自动退房");
+                        plugin.getLang().send(p, "checkin.expired");
                     }
                     checkout(player);
                 }
@@ -188,7 +190,8 @@ public class CheckinHandler {
         // 通知房主
         Player owner = Bukkit.getPlayer(room.getOwner());
         if (owner != null && owner.isOnline()) {
-            owner.sendMessage("§e" + player.getName() + " §a已入住你的房间 §e" + room.getName());
+            owner.sendMessage(plugin.getLang().get("checkin.notify_owner",
+                    "player", player.getName(), "room", room.getName()));
         }
     }
 
@@ -199,12 +202,13 @@ public class CheckinHandler {
     private void sendWelcomeEffects(Player player, HotelRoom room) {
         try {
             if (plugin.getConfig().getBoolean("checkin.welcome-title", true)) {
-                player.sendTitle("§a§l欢迎入住！",
-                        "§e" + room.getName() + " §7| §f祝您入住愉快", 10, 60, 20);
+                player.sendTitle(plugin.getLang().get("checkin.welcome_title"),
+                        plugin.getLang().get("checkin.welcome_subtitle", "room", room.getName()),
+                        10, 60, 20);
             }
             if (plugin.getConfig().getBoolean("checkin.welcome-actionbar", true)) {
-                player.sendActionBar("§a已入住 §e" + room.getName()
-                        + " §7| §f/ht checkout §7退房  §f/ht tp §7回房间");
+                player.sendActionBar(plugin.getLang().get("checkin.welcome_actionbar",
+                        "room", room.getName()));
             }
             if (plugin.getConfig().getBoolean("checkin.welcome-sound", true)) {
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
@@ -228,7 +232,7 @@ public class CheckinHandler {
             }
         }
 
-        player.sendMessage("§c你没有入住任何房间");
+        plugin.getLang().send(player, "checkin.not_checked_in");
     }
 
     /**
@@ -239,12 +243,12 @@ public class CheckinHandler {
 
         HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
         if (room == null) {
-            player.sendMessage("§c房间不存在");
+            plugin.getLang().send(player, "common.room_not_found");
             return;
         }
 
         if (room.getCurrentGuest() == null || !room.getCurrentGuest().equals(player.getUniqueId())) {
-            player.sendMessage("§c你没有入住这个房间");
+            plugin.getLang().send(player, "checkin.not_in_this_room");
             return;
         }
 
@@ -267,7 +271,7 @@ public class CheckinHandler {
             }
         }
 
-        player.sendMessage("§c你没有入住名为 §e" + roomName + " §c的房间");
+        plugin.getLang().send(player, "checkin.not_in_named_room", "room", roomName);
     }
 
     /**
@@ -281,12 +285,13 @@ public class CheckinHandler {
         plugin.getRoomStorage().saveRoom(room);
 
         plugin.log(player, "成功退房: " + room.getName() + " (ID: " + room.getId() + ")");
-        player.sendMessage("§a已从房间 §e" + room.getName() + " §a退房");
-        player.sendMessage("§7满意的话可以给房间评分: §e/ht rate " + room.getId() + " <分数1-5> [评语]");
+        plugin.getLang().send(player, "checkin.checkout_success", "room", room.getName());
+        plugin.getLang().send(player, "checkin.rate_hint", "id", room.getId());
 
         Player owner = Bukkit.getPlayer(room.getOwner());
         if (owner != null && owner.isOnline()) {
-            owner.sendMessage("§e" + player.getName() + " §c已从你的房间 §e" + room.getName() + " §c退房");
+            owner.sendMessage(plugin.getLang().get("checkin.notify_owner_checkout",
+                    "player", player.getName(), "room", room.getName()));
         }
     }
 
@@ -322,7 +327,7 @@ public class CheckinHandler {
 
                 Player owner = Bukkit.getPlayer(room.getOwner());
                 if (owner != null && owner.isOnline()) {
-                    owner.sendMessage("§e" + guestName + " §c入住时间已到，自动退房");
+                    plugin.getLang().send(owner, "checkin.notify_owner_expired", "player", guestName);
                 }
                 return;
             }

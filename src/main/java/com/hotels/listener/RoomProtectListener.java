@@ -80,7 +80,7 @@ public class RoomProtectListener implements Listener {
         if (canAccessRoom(player, room)) return;
 
         event.setCancelled(true);
-        player.sendMessage("§c你没有权限破坏这个房间内的方块");
+        plugin.getLang().send(player, "listener.protect.no_break");
         plugin.debug(player, "尝试破坏房间方块被拒绝: " + player.getName() + " 房间: " + room.getName());
     }
 
@@ -97,7 +97,7 @@ public class RoomProtectListener implements Listener {
         if (canAccessRoom(player, room)) return;
 
         event.setCancelled(true);
-        player.sendMessage("§c你没有权限在这个房间内放置方块");
+        plugin.getLang().send(player, "listener.protect.no_place");
         plugin.debug(player, "尝试放置房间方块被拒绝: " + player.getName() + " 房间: " + room.getName());
     }
 
@@ -120,7 +120,7 @@ public class RoomProtectListener implements Listener {
         if (canAccessRoom(player, room)) return;
 
         event.setCancelled(true);
-        player.sendMessage("§c你没有权限打开这个房间内的容器");
+        plugin.getLang().send(player, "listener.protect.no_container");
         plugin.debug(player, "尝试打开房间容器被拒绝: " + player.getName() + " 房间: " + room.getName());
     }
 

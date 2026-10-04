@@ -141,13 +141,13 @@ public class PresetManager {
     public void savePreset(Player player, HotelRoom room, String name) {
         World world = Bukkit.getWorld(room.getWorldName());
         if (world == null) {
-            player.sendMessage("§c房间所在世界不存在");
+            plugin.getLang().send(player, "preset.world_missing");
             return;
         }
         if (plugin.getPresetStorage().hasPreset(name)) {
-            player.sendMessage("§c已存在同名预设 §e" + name + " §c，将覆盖旧预设");
+            plugin.getLang().send(player, "preset.overwrite_same_name", "name", name);
         }
-        player.sendMessage("§7正在快照房间装修，请稍候...");
+        plugin.getLang().send(player, "preset.snapshot_start");
 
         int[] b = roomBounds(room);
         Location center = new Location(world,
@@ -160,12 +160,12 @@ public class PresetManager {
                 plugin.getPresetStorage().savePreset(preset);
                 plugin.log(player, "保存装修预设: " + name
                         + " (" + preset.getSizeDisplay() + ", " + preset.getBlocks().size() + " 个方块)");
-                SchedulerCompat.runTask(plugin, () -> player.sendMessage(
-                        "§a装修预设 §e" + name + " §a保存成功！"));
+                SchedulerCompat.runTask(plugin, () -> plugin.getLang().send(player,
+                        "preset.save_success", "name", name));
             } catch (Exception e) {
                 plugin.getLogger().warning("保存装修预设失败: " + e.getMessage());
-                SchedulerCompat.runTask(plugin, () ->
-                        player.sendMessage("§c保存失败: " + e.getMessage()));
+                SchedulerCompat.runTask(plugin, () -> plugin.getLang().send(player,
+                        "preset.save_failed", "error", e.getMessage()));
             }
         });
     }
@@ -254,36 +254,44 @@ public class PresetManager {
      */
     public void applyPreset(Player player, HotelRoom room, RoomPreset preset, boolean confirm) {
         if (applying.contains(player)) {
-            player.sendMessage("§c你正在应用装修预设，请稍候...");
+            plugin.getLang().send(player, "preset.applying");
             return;
         }
         if (room.isOccupied()) {
-            player.sendMessage("§c房间当前有客人入住，无法应用装修预设");
+            plugin.getLang().send(player, "preset.occupied");
             return;
         }
         if (!room.getWorldName().equals(preset.getWorld())) {
-            player.sendMessage("§c预设来源世界（" + preset.getWorld() + "）与房间世界不一致");
+            plugin.getLang().send(player, "preset.world_mismatch", "world", preset.getWorld());
             return;
         }
 
         int[] dims = roomDimensions(room);
         if (!preset.matchesSize(dims[0], dims[1], dims[2])) {
-            player.sendMessage("§c尺寸不匹配，无法应用该预设！");
-            player.sendMessage("§7预设尺寸: §e" + preset.getSizeDisplay()
-                    + (preset.getRotation() > 0 ? " §7(旋转" + preset.getRotation() + "°)" : "")
-                    + " §7| 房间尺寸: §e" + dims[0] + " x " + dims[1] + " x " + dims[2]);
-            player.sendMessage("§7提示: 只有房间与预设大小完全一致才能应用");
+            plugin.getLang().send(player, "preset.size_mismatch");
+            String dimsText = dims[0] + " x " + dims[1] + " x " + dims[2];
+            if (preset.getRotation() > 0) {
+                plugin.getLang().send(player, "preset.size_detail_rot",
+                        "size", preset.getSizeDisplay(),
+                        "rotation", preset.getRotation(),
+                        "dims", dimsText);
+            } else {
+                plugin.getLang().send(player, "preset.size_detail",
+                        "size", preset.getSizeDisplay(),
+                        "dims", dimsText);
+            }
+            plugin.getLang().send(player, "preset.size_hint");
             return;
         }
 
         World world = Bukkit.getWorld(room.getWorldName());
         if (world == null) {
-            player.sendMessage("§c房间所在世界不存在");
+            plugin.getLang().send(player, "preset.world_missing");
             return;
         }
 
         // 将"可以使用功能"的判定回报给玩家
-        player.sendMessage("§a尺寸匹配，开始应用预设 §e" + preset.getName() + " §a...");
+        plugin.getLang().send(player, "preset.apply_start", "name", preset.getName());
         plugin.log(player, "应用装修预设: " + preset.getName() + " -> 房间 "
                 + room.getName() + " (" + room.getId() + ")");
 
@@ -296,8 +304,8 @@ public class PresetManager {
             // 冲突检测：统计房间内现有非空气方块
             int nonAir = countNonAir(world, b);
             if (nonAir > 0 && !confirm) {
-                player.sendMessage("§c检测到房间内已有 §e" + nonAir + " §c个方块，应用预设将覆盖现有装修！");
-                player.sendMessage("§7如确认覆盖，请执行: §e/ht preset apply <名称> [角度] confirm");
+                plugin.getLang().send(player, "preset.overwrite_warn", "count", nonAir);
+                plugin.getLang().send(player, "preset.overwrite_hint");
                 return;
             }
 
@@ -305,7 +313,7 @@ public class PresetManager {
             try {
                 RoomPreset backup = snapshot(room, world, "__undo__" + room.getId(), b);
                 undoBackups.put(room.getId(), backup);
-                player.sendMessage("§7已备份当前装修，可用 §e/ht preset undo §7回滚");
+                plugin.getLang().send(player, "preset.backup_done");
             } catch (Exception e) {
                 plugin.getLogger().warning("备份房间状态失败: " + e.getMessage());
             }
@@ -326,24 +334,24 @@ public class PresetManager {
     public boolean undoPreset(Player player, HotelRoom room) {
         RoomPreset backup = undoBackups.get(room.getId());
         if (backup == null) {
-            player.sendMessage("§c该房间没有可回滚的装修记录");
+            plugin.getLang().send(player, "preset.nothing_to_undo");
             return false;
         }
         if (applying.contains(player)) {
-            player.sendMessage("§c你正在应用装修预设，请稍候...");
+            plugin.getLang().send(player, "preset.applying");
             return false;
         }
         if (room.isOccupied()) {
-            player.sendMessage("§c房间当前有客人入住，无法回滚装修");
+            plugin.getLang().send(player, "preset.undo_occupied");
             return false;
         }
         World world = Bukkit.getWorld(room.getWorldName());
         if (world == null) {
-            player.sendMessage("§c房间所在世界不存在");
+            plugin.getLang().send(player, "preset.world_missing");
             return false;
         }
 
-        player.sendMessage("§7正在回滚房间装修到应用预设前的状态...");
+        plugin.getLang().send(player, "preset.undo_start");
         plugin.log(player, "回滚装修: " + room.getName() + " (" + room.getId() + ")");
 
         int[] b = roomBounds(room);
@@ -389,7 +397,7 @@ public class PresetManager {
             if (key == null) {
                 taskHolder[0].cancel();
                 applying.remove(player);
-                player.sendMessage("§a装修预设应用完成！");
+                plugin.getLang().send(player, "preset.apply_done");
                 return;
             }
             int cx = (int) (key & 0xFFFFFFFFL);
@@ -397,7 +405,7 @@ public class PresetManager {
             processChunk(world, b, preset, cx, cz);
             done[0]++;
             if (done[0] % 5 == 0 || done[0] == totalChunks) {
-                player.sendMessage("§7进度: " + done[0] + "/" + totalChunks + " chunk");
+                plugin.getLang().send(player, "preset.progress", "done", done[0], "total", totalChunks);
             }
         }, 1L, 1L);
     }
@@ -421,7 +429,7 @@ public class PresetManager {
                 if (done[0] == totalChunks) {
                     applying.remove(player);
                     SchedulerCompat.runTask(plugin, () ->
-                            player.sendMessage("§a装修预设应用完成！"));
+                            plugin.getLang().send(player, "preset.apply_done"));
                 }
             });
         }

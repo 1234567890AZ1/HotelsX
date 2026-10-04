@@ -43,32 +43,33 @@ public class CollectionGUI {
     public static final String GUI_NAME = "collection";
 
     public static void openManage(Player player) {
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":manage"), 27, "§8§l酒店合集");
+        HotelsPlugin plugin = HotelsPlugin.getInstance();
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":manage"), 27, plugin.getLang().get("gui.collection.manage_title"));
 
         ItemStack border = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
         for (int i = 0; i < 9; i++) inv.setItem(i, border);
         for (int i = 18; i < 27; i++) inv.setItem(i, border);
 
-        inv.setItem(11, createItem(Material.ENDER_CHEST, "§d§l浏览所有酒店",
-                "§7查看所有玩家创建的酒店合集",
+        inv.setItem(11, createItem(Material.ENDER_CHEST, plugin.getLang().get("gui.collection.browse_all_name"),
+                plugin.getLang().get("gui.collection.browse_all_lore1"),
                 "",
-                "§8点击浏览"));
+                plugin.getLang().get("gui.collection.click_browse")));
 
-        inv.setItem(13, createItem(Material.CHEST, "§a§l创建新酒店",
-                "§7创建一个新的房间合集",
-                "§7创建后可以将自己的房间加入",
+        inv.setItem(13, createItem(Material.CHEST, plugin.getLang().get("gui.collection.create_name"),
+                plugin.getLang().get("gui.collection.create_lore1"),
+                plugin.getLang().get("gui.collection.create_lore2"),
                 "",
-                "§8点击创建"));
+                plugin.getLang().get("gui.collection.click_create")));
 
-        inv.setItem(15, createItem(Material.BOOKSHELF, "§e§l我的酒店",
-                "§7查看和管理你创建的酒店合集",
+        inv.setItem(15, createItem(Material.BOOKSHELF, plugin.getLang().get("gui.collection.my_hotels_name"),
+                plugin.getLang().get("gui.collection.my_hotels_lore1"),
                 "",
-                "§8点击查看"));
+                plugin.getLang().get("gui.collection.click_view")));
 
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l返回");
+            backMeta.setDisplayName(plugin.getLang().get("gui.common.back_red"));
             back.setItemMeta(backMeta);
         }
         inv.setItem(22, back);
@@ -95,7 +96,7 @@ public class CollectionGUI {
         int end = Math.min(start + 36, collections.size());
         List<RoomCollection> pageCols = collections.subList(start, end);
 
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":browse_all:" + page), 54, "§8§l浏览酒店 §7(" + (page + 1) + "/" + Math.max(1, totalPages) + ")");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":browse_all:" + page), 54, plugin.getLang().get("gui.collection.browse_title", "page", page + 1, "total", Math.max(1, totalPages)));
 
         ItemStack border = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
         for (int i = 0; i < 9; i++) inv.setItem(i, border);
@@ -104,8 +105,8 @@ public class CollectionGUI {
         ItemStack searchItem = new ItemStack(Material.COMPASS);
         ItemMeta searchMeta = searchItem.getItemMeta();
         if (searchMeta != null) {
-            searchMeta.setDisplayName("§d§l搜索酒店");
-            searchMeta.setLore(java.util.Arrays.asList("§7点击搜索"));
+            searchMeta.setDisplayName(plugin.getLang().get("gui.common.search_hotel"));
+            searchMeta.setLore(java.util.Arrays.asList(plugin.getLang().get("gui.common.click_search")));
             searchItem.setItemMeta(searchMeta);
         }
         inv.setItem(4, searchItem);
@@ -124,11 +125,11 @@ public class CollectionGUI {
                 if (col.getDescription() != null) {
                     lore.add("§7" + col.getDescription());
                 }
-                lore.add("§7房主: §f" + col.getOwnerName());
-                lore.add("§7房间: §f" + col.getRoomCount() + " §7间 (空闲 §a" + available + "§7)");
-                lore.add("§7时长: " + col.getDurationDisplay());
+                lore.add(plugin.getLang().get("gui.common.owner", "owner", col.getOwnerName()));
+                lore.add(plugin.getLang().get("gui.collection.rooms_available", "count", col.getRoomCount(), "available", available));
+                lore.add(plugin.getLang().get("gui.collection.duration", "duration", col.getDurationDisplay()));
                 lore.add("");
-                lore.add("§e左键 §7查看房间列表");
+                lore.add(plugin.getLang().get("gui.collection.view_rooms_hint"));
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
@@ -138,7 +139,7 @@ public class CollectionGUI {
         ItemStack prev = new ItemStack(page > 0 ? Material.ARROW : Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta prevMeta = prev.getItemMeta();
         if (prevMeta != null) {
-            prevMeta.setDisplayName(page > 0 ? "§7上一页" : "§8上一页");
+            prevMeta.setDisplayName(plugin.getLang().get(page > 0 ? "gui.common.prev_page" : "gui.common.prev_page_off"));
             prev.setItemMeta(prevMeta);
         }
         inv.setItem(45, prev);
@@ -146,7 +147,7 @@ public class CollectionGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l返回");
+            backMeta.setDisplayName(plugin.getLang().get("gui.common.back_red"));
             back.setItemMeta(backMeta);
         }
         inv.setItem(49, back);
@@ -154,7 +155,7 @@ public class CollectionGUI {
         ItemStack next = new ItemStack(page < totalPages - 1 ? Material.ARROW : Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta nextMeta = next.getItemMeta();
         if (nextMeta != null) {
-            nextMeta.setDisplayName(page < totalPages - 1 ? "§7下一页" : "§8下一页");
+            nextMeta.setDisplayName(plugin.getLang().get(page < totalPages - 1 ? "gui.common.next_page" : "gui.common.next_page_off"));
             next.setItemMeta(nextMeta);
         }
         inv.setItem(53, next);
@@ -168,7 +169,7 @@ public class CollectionGUI {
     }
 
     public static void openMyCollections(Player player, HotelsPlugin plugin, List<RoomCollection> collections) {
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":my"), 54, "§8§l我的酒店");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":my"), 54, plugin.getLang().get("gui.collection.my_title"));
 
         ItemStack border = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
         for (int i = 0; i < 9; i++) inv.setItem(i, border);
@@ -177,8 +178,8 @@ public class CollectionGUI {
         ItemStack searchItem = new ItemStack(Material.COMPASS);
         ItemMeta searchMeta = searchItem.getItemMeta();
         if (searchMeta != null) {
-            searchMeta.setDisplayName("§d§l搜索酒店");
-            searchMeta.setLore(java.util.Arrays.asList("§7点击搜索"));
+            searchMeta.setDisplayName(plugin.getLang().get("gui.common.search_hotel"));
+            searchMeta.setLore(java.util.Arrays.asList(plugin.getLang().get("gui.common.click_search")));
             searchItem.setItemMeta(searchMeta);
         }
         inv.setItem(4, searchItem);
@@ -196,10 +197,10 @@ public class CollectionGUI {
                 if (col.getDescription() != null) {
                     lore.add("§7" + col.getDescription());
                 }
-                lore.add("§7房间: §f" + col.getRoomCount() + " §7间");
+                lore.add(plugin.getLang().get("gui.collection.rooms_count", "count", col.getRoomCount()));
                 lore.add("");
-                lore.add("§e左键 §7管理合集");
-                lore.add("§c右键 §7删除合集");
+                lore.add(plugin.getLang().get("gui.collection.manage_hint"));
+                lore.add(plugin.getLang().get("gui.collection.delete_hint"));
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
@@ -209,7 +210,7 @@ public class CollectionGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l返回");
+            backMeta.setDisplayName(plugin.getLang().get("gui.common.back_red"));
             back.setItemMeta(backMeta);
         }
         inv.setItem(49, back);
@@ -237,16 +238,16 @@ public class CollectionGUI {
         int end = Math.min(start + 36, rooms.size());
         List<HotelRoom> pageRooms = rooms.subList(start, end);
 
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":manage_collection:" + page, col), 54, "§8§l" + col.getName() + " §7(" + (page + 1) + "/" + Math.max(1, totalPages) + ")");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":manage_collection:" + page, col), 54, plugin.getLang().get("gui.collection.manage_collection_title", "name", col.getName(), "page", page + 1, "total", Math.max(1, totalPages)));
 
         ItemStack infoItem = new ItemStack(Material.CHEST);
         ItemMeta infoMeta = infoItem.getItemMeta();
         if (infoMeta != null) {
             infoMeta.setDisplayName("§6" + col.getName());
             infoMeta.setLore(Arrays.asList(
-                    "§7房间: §f" + inCol.size() + " / " + rooms.size(),
-                    "§7管理员: §f" + col.getAdminCount() + " 人",
-                    "§e点击房间添加/移除"
+                    plugin.getLang().get("gui.collection.rooms_progress", "in", inCol.size(), "total", rooms.size()),
+                    plugin.getLang().get("gui.collection.admins_count", "count", col.getAdminCount()),
+                    plugin.getLang().get("gui.collection.click_toggle_room")
             ));
             infoItem.setItemMeta(infoMeta);
         }
@@ -259,23 +260,23 @@ public class CollectionGUI {
         ItemStack searchItem = new ItemStack(Material.COMPASS);
         ItemMeta searchMeta = searchItem.getItemMeta();
         if (searchMeta != null) {
-            searchMeta.setDisplayName("§d§l搜索房间");
-            searchMeta.setLore(java.util.Arrays.asList("§7点击搜索"));
+            searchMeta.setDisplayName(plugin.getLang().get("gui.common.search_room"));
+            searchMeta.setLore(java.util.Arrays.asList(plugin.getLang().get("gui.common.click_search")));
             searchItem.setItemMeta(searchMeta);
         }
         inv.setItem(3, searchItem);
 
         inv.setItem(46, createItem(Material.PLAYER_HEAD, "§d§l管理员管理",
-                "§7添加或移除合集管理员",
-                "§7当前 " + col.getAdminCount() + " 位管理员",
+                plugin.getLang().get("gui.collection.admin_manage_lore1"),
+                plugin.getLang().get("gui.collection.admin_manage_lore2", "count", col.getAdminCount()),
                 "",
-                "§8点击管理"));
+                plugin.getLang().get("gui.collection.click_manage")));
 
         inv.setItem(52, createItem(Material.GOLD_INGOT, "§6§l一键定价",
-                "§7统一设置合集内所有房间的价格",
-                "§7当前 " + inCol.size() + " 个房间",
+                plugin.getLang().get("gui.collection.set_price_lore1"),
+                plugin.getLang().get("gui.collection.set_price_lore2", "count", inCol.size()),
                 "",
-                "§8点击设置"));
+                plugin.getLang().get("gui.collection.click_set")));
 
         int slot = 9;
         for (HotelRoom room : pageRooms) {
@@ -283,17 +284,17 @@ public class CollectionGUI {
             boolean isInCol = col.getRoomIds().contains(room.getId());
 
             Material mat = isInCol ? Material.GREEN_WOOL : Material.RED_WOOL;
-            String status = isInCol ? "§a已加入" : "§c未加入";
+            String status = plugin.getLang().get(isInCol ? "gui.collection.joined" : "gui.collection.not_joined");
 
             ItemStack item = new ItemStack(mat);
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 meta.setDisplayName("§e" + room.getName());
                 meta.setLore(Arrays.asList(
-                        "§7ID: §f" + room.getId(),
-                        "§7状态: " + status,
+                        plugin.getLang().get("gui.common.id", "id", room.getId()),
+                        plugin.getLang().get("gui.common.status", "status", status),
                         "",
-                        "§e点击" + (isInCol ? "移出" : "加入") + "合集"
+                        plugin.getLang().get(isInCol ? "gui.collection.click_remove_collection" : "gui.collection.click_add_collection")
                 ));
                 item.setItemMeta(meta);
             }
@@ -303,7 +304,7 @@ public class CollectionGUI {
         ItemStack prev = new ItemStack(page > 0 ? Material.ARROW : Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta prevMeta = prev.getItemMeta();
         if (prevMeta != null) {
-            prevMeta.setDisplayName(page > 0 ? "§7上一页" : "§8上一页");
+            prevMeta.setDisplayName(plugin.getLang().get(page > 0 ? "gui.common.prev_page" : "gui.common.prev_page_off"));
             prev.setItemMeta(prevMeta);
         }
         inv.setItem(45, prev);
@@ -311,7 +312,7 @@ public class CollectionGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l返回");
+            backMeta.setDisplayName(plugin.getLang().get("gui.common.back_red"));
             back.setItemMeta(backMeta);
         }
         inv.setItem(49, back);
@@ -319,7 +320,7 @@ public class CollectionGUI {
         ItemStack next = new ItemStack(page < totalPages - 1 ? Material.ARROW : Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta nextMeta = next.getItemMeta();
         if (nextMeta != null) {
-            nextMeta.setDisplayName(page < totalPages - 1 ? "§7下一页" : "§8下一页");
+            nextMeta.setDisplayName(plugin.getLang().get(page < totalPages - 1 ? "gui.common.next_page" : "gui.common.next_page_off"));
             next.setItemMeta(nextMeta);
         }
         inv.setItem(53, next);
@@ -336,8 +337,8 @@ public class CollectionGUI {
         if (infoMeta != null) {
             infoMeta.setDisplayName("§6" + col.getName());
             infoMeta.setLore(Arrays.asList(
-                    "§7房主: §f" + col.getOwnerName(),
-                    "§7房间: §f" + rooms.size() + " §7间"
+                    plugin.getLang().get("gui.common.owner", "owner", col.getOwnerName()),
+                    plugin.getLang().get("gui.collection.rooms_count", "count", rooms.size())
             ));
             infoItem.setItemMeta(infoMeta);
         }
@@ -362,11 +363,11 @@ public class CollectionGUI {
             if (meta != null) {
                 meta.setDisplayName("§e" + room.getName());
                 meta.setLore(Arrays.asList(
-                        "§7房主: §f" + room.getOwnerName(),
-                        "§7价格: §f" + room.getPrice(),
-                        "§7状态: " + getStatusDisplay(room.getStatus()),
+                        plugin.getLang().get("gui.common.owner", "owner", room.getOwnerName()),
+                        plugin.getLang().get("gui.common.price", "price", room.getPrice()),
+                        plugin.getLang().get("gui.common.status", "status", getStatusDisplay(room.getStatus())),
                         "",
-                        "§e左键 §7入住"
+                        plugin.getLang().get("gui.collection.left_checkin")
                 ));
                 item.setItemMeta(meta);
             }
@@ -376,7 +377,7 @@ public class CollectionGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l返回");
+            backMeta.setDisplayName(plugin.getLang().get("gui.common.back_red"));
             back.setItemMeta(backMeta);
         }
         inv.setItem(49, back);
@@ -386,16 +387,16 @@ public class CollectionGUI {
 
     public static void openAdminManage(Player player, RoomCollection col, HotelsPlugin plugin) {
         List<Player> onlinePlayers = new ArrayList<>(Bukkit.getOnlinePlayers());
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":admin_manage", col), 54, "§8§l管理员: " + col.getName());
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":admin_manage", col), 54, plugin.getLang().get("gui.collection.admin_title", "name", col.getName()));
 
         ItemStack infoItem = new ItemStack(Material.PLAYER_HEAD);
         ItemMeta infoMeta = infoItem.getItemMeta();
         if (infoMeta != null) {
-            infoMeta.setDisplayName("§6管理员管理");
+            infoMeta.setDisplayName(plugin.getLang().get("gui.collection.admin_info_name"));
             infoMeta.setLore(Arrays.asList(
-                    "§7房主: §f" + col.getOwnerName(),
-                    "§7管理员: §f" + col.getAdminCount() + " 人",
-                    "§e点击在线玩家添加/移除管理员"
+                    plugin.getLang().get("gui.collection.admin_info_lore1", "owner", col.getOwnerName()),
+                    plugin.getLang().get("gui.collection.admin_info_lore2", "count", col.getAdminCount()),
+                    plugin.getLang().get("gui.collection.admin_click_hint")
             ));
             infoItem.setItemMeta(infoMeta);
         }
@@ -415,13 +416,13 @@ public class CollectionGUI {
             String status;
             if (isOwner) {
                 mat = Material.GOLD_BLOCK;
-                status = "§6房主";
+                status = plugin.getLang().get("gui.collection.role_owner");
             } else if (isAdmin) {
                 mat = Material.EMERALD_BLOCK;
-                status = "§a管理员";
+                status = plugin.getLang().get("gui.collection.role_admin");
             } else {
                 mat = Material.STONE;
-                status = "§7普通";
+                status = plugin.getLang().get("gui.collection.role_normal");
             }
 
             ItemStack item = new ItemStack(mat);
@@ -429,10 +430,10 @@ public class CollectionGUI {
             if (meta != null) {
                 meta.setDisplayName("§e" + online.getName());
                 meta.setLore(Arrays.asList(
-                        "§7状态: " + status,
+                        plugin.getLang().get("gui.common.status", "status", status),
                         "",
-                        isOwner ? "§7房主不可操作" :
-                        (isAdmin ? "§c点击移除管理员" : "§a点击添加为管理员")
+                        isOwner ? plugin.getLang().get("gui.collection.owner_cannot_operate") :
+                        (isAdmin ? plugin.getLang().get("gui.collection.click_remove_admin") : plugin.getLang().get("gui.collection.click_add_admin"))
                 ));
                 item.setItemMeta(meta);
             }
@@ -442,7 +443,7 @@ public class CollectionGUI {
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta backMeta = back.getItemMeta();
         if (backMeta != null) {
-            backMeta.setDisplayName("§c§l返回");
+            backMeta.setDisplayName(plugin.getLang().get("gui.common.back_red"));
             back.setItemMeta(backMeta);
         }
         inv.setItem(49, back);
@@ -452,10 +453,10 @@ public class CollectionGUI {
 
     private static String getStatusDisplay(HotelRoom.RoomStatus status) {
         switch (status) {
-            case AVAILABLE: return "§a空闲";
-            case OCCUPIED: return "§c已入住";
-            case MAINTENANCE: return "§7维护中";
-            default: return "§7未知";
+            case AVAILABLE: return HotelsPlugin.getInstance().getLang().get("command.status.available");
+            case OCCUPIED: return HotelsPlugin.getInstance().getLang().get("command.status.occupied");
+            case MAINTENANCE: return HotelsPlugin.getInstance().getLang().get("command.status.maintenance");
+            default: return HotelsPlugin.getInstance().getLang().get("command.status.unknown");
         }
     }
 

@@ -46,17 +46,17 @@ public class TagSelectGUI {
         List<String> currentTags = room.getTags();
 
         int size = Math.min(54, Math.max(9, ((presetTags.size() / 9) + 2) * 9));
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME, room), size, "§8§l选择标签");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME, room), size, plugin.getLang().get("gui.tag_select.title"));
 
         ItemStack infoItem = new ItemStack(Material.NAME_TAG);
         ItemMeta infoMeta = infoItem.getItemMeta();
         if (infoMeta != null) {
             infoMeta.setDisplayName("§6" + room.getName());
             infoMeta.setLore(Arrays.asList(
-                    "§7当前标签: " + room.getTagsDisplay(),
-                    "§7还可添加: §e" + (3 - currentTags.size()) + " §7个",
+                    plugin.getLang().get("gui.tag_select.info_current", "tags", room.getTagsDisplay()),
+                    plugin.getLang().get("gui.tag_select.info_can_add", "n", 3 - currentTags.size()),
                     "",
-                    "§e点击标签切换"
+                    plugin.getLang().get("gui.tag_select.click_toggle")
             ));
             infoItem.setItemMeta(infoMeta);
         }
@@ -72,23 +72,25 @@ public class TagSelectGUI {
             boolean canAdd = currentTags.size() < 3;
 
             Material mat = hasTag ? Material.LIME_DYE : (canAdd ? Material.GRAY_DYE : Material.BARRIER);
-            String status = hasTag ? "§a已选择" : (canAdd ? "§7点击添加" : "§c已达上限");
+            String status = plugin.getLang().get(hasTag ? "gui.tag_select.selected" : (canAdd ? "gui.tag_select.click_add" : "gui.tag_select.limit_reached"));
 
             ItemStack item = new ItemStack(mat);
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 meta.setDisplayName((hasTag ? "§a" : "§7") + "§l" + tag);
                 meta.setLore(Arrays.asList(
-                        "§7状态: " + status,
+                        plugin.getLang().get("gui.tag_select.status_line", "status", status),
                         "",
-                        hasTag ? "§c点击移除" : (canAdd ? "§a点击添加" : "§c已达上限")
+                        plugin.getLang().get(hasTag ? "gui.tag_select.click_remove" : (canAdd ? "gui.tag_select.click_add" : "gui.tag_select.limit_reached"))
                 ));
                 item.setItemMeta(meta);
             }
             inv.setItem(slot++, item);
         }
 
-        inv.setItem(size - 1, createItem(Material.ARROW, "§7§l返回", "§8返回房间管理"));
+        inv.setItem(size - 1, createItem(Material.ARROW,
+                plugin.getLang().get("gui.common.back_gold"),
+                plugin.getLang().get("gui.tag_select.back_lore")));
 
         player.openInventory(inv);
     }

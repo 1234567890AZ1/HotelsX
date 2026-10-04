@@ -49,17 +49,14 @@ public class AdminPanelGUI {
 
     public static void open(Player player, int page) {
         HotelsPlugin plugin = HotelsPlugin.getInstance();
-        if (plugin == null) {
-            player.sendMessage("§c插件未就绪");
-            return;
-        }
+        if (plugin == null) return;
 
         List<HotelRoom> allRooms = new ArrayList<>(plugin.getRoomStorage().getAllRooms());
         int totalRooms = allRooms.size();
         int totalPages = (totalRooms + PAGE_SIZE - 1) / PAGE_SIZE;
         page = Math.max(0, Math.min(page, totalPages - 1));
 
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":" + page), 54, "§c§l管理员后台");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME + ":" + page), 54, plugin.getLang().get("gui.admin.title"));
 
         ItemStack blackPane = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
         ItemStack redPane = createItem(Material.RED_STAINED_GLASS_PANE, "§8 ");
@@ -69,15 +66,15 @@ public class AdminPanelGUI {
             inv.setItem(i, blackPane);
         }
 
-        inv.setItem(0, createItem(Material.COMMAND_BLOCK, "§c§l管理员面板",
-                "§7总房间数: §f" + totalRooms,
-                "§7总合集数: §f" + plugin.getRoomStorage().getCollectionCount(),
-                "§7当前页面: §f" + (page + 1) + "/" + (totalPages > 0 ? totalPages : 1)));
+        inv.setItem(0, createItem(Material.COMMAND_BLOCK, plugin.getLang().get("gui.admin.panel_name"),
+                plugin.getLang().get("gui.admin.total_rooms", "count", totalRooms),
+                plugin.getLang().get("gui.admin.total_collections", "count", plugin.getRoomStorage().getCollectionCount()),
+                plugin.getLang().get("gui.admin.current_page", "page", page + 1, "total", totalPages > 0 ? totalPages : 1)));
 
-        inv.setItem(4, createItem(Material.PAPER, "§6§l快捷操作",
-                "§7左键: 查看房间详情",
-                "§7右键: 删除房间",
-                "§7Shift+左键: 传送"));
+        inv.setItem(4, createItem(Material.PAPER, plugin.getLang().get("gui.admin.quick_actions"),
+                plugin.getLang().get("gui.admin.quick_left"),
+                plugin.getLang().get("gui.admin.quick_right"),
+                plugin.getLang().get("gui.admin.quick_shift")));
 
         for (int i = 45; i < 54; i++) {
             inv.setItem(i, redPane);
@@ -87,18 +84,18 @@ public class AdminPanelGUI {
         boolean hasNext = page < totalPages - 1;
 
         inv.setItem(45, hasPrev ?
-                createItem(Material.ARROW, "§a§l上一页") :
-                createItem(Material.GRAY_STAINED_GLASS_PANE, "§7上一页"));
+                createItem(Material.ARROW, plugin.getLang().get("gui.admin.prev_enabled")) :
+                createItem(Material.GRAY_STAINED_GLASS_PANE, plugin.getLang().get("gui.admin.prev_disabled")));
 
-        inv.setItem(47, createItem(Material.BARRIER, "§c§l强制删除选中房间", "§7按住Shift点击"));
-        inv.setItem(48, createItem(Material.COMPASS, "§d§l搜索房间", "§7点击搜索"));
-        inv.setItem(49, createItem(Material.ARROW, "§7§l返回主菜单", "§8点击返回"));
-        inv.setItem(50, createItem(Material.PAPER, "§e§l第 " + (page + 1) + " / " + totalPages + " 页"));
-        inv.setItem(51, createItem(Material.EMERALD, "§a§l重新加载数据", "§7点击重新加载"));
+        inv.setItem(47, createItem(Material.BARRIER, plugin.getLang().get("gui.admin.force_delete"), plugin.getLang().get("gui.admin.force_delete_lore")));
+        inv.setItem(48, createItem(Material.COMPASS, plugin.getLang().get("gui.common.search_room"), plugin.getLang().get("gui.common.click_search")));
+        inv.setItem(49, createItem(Material.ARROW, plugin.getLang().get("gui.common.back_main_button"), plugin.getLang().get("gui.common.click_back")));
+        inv.setItem(50, createItem(Material.PAPER, plugin.getLang().get("gui.admin.page", "page", page + 1, "total", totalPages)));
+        inv.setItem(51, createItem(Material.EMERALD, plugin.getLang().get("gui.admin.reload_name"), plugin.getLang().get("gui.admin.reload_lore")));
 
         inv.setItem(53, hasNext ?
-                createItem(Material.ARROW, "§a§l下一页") :
-                createItem(Material.GRAY_STAINED_GLASS_PANE, "§7下一页"));
+                createItem(Material.ARROW, plugin.getLang().get("gui.admin.next_enabled")) :
+                createItem(Material.GRAY_STAINED_GLASS_PANE, plugin.getLang().get("gui.admin.next_disabled")));
 
         int startIndex = page * PAGE_SIZE;
         int endIndex = Math.min(startIndex + PAGE_SIZE, totalRooms);
@@ -142,28 +139,28 @@ public class AdminPanelGUI {
             meta.setDisplayName("§e" + room.getName());
 
             List<String> lore = new ArrayList<>();
-            lore.add("§7ID: §f" + room.getId());
-            lore.add("§7房主: §f" + room.getOwnerName());
-            lore.add("§7状态: " + statusColor + room.getStatus().name());
-            lore.add("§7价格: §f" + plugin.getEconomyManager().format(room.getPrice()));
-            lore.add("§7世界: §f" + room.getWorldName());
-            lore.add("§7大小: §f" + room.getVolume() + " 方块");
+            lore.add(plugin.getLang().get("gui.common.id", "id", room.getId()));
+            lore.add(plugin.getLang().get("gui.common.owner", "owner", room.getOwnerName()));
+            lore.add(plugin.getLang().get("gui.common.status", "status", statusColor + room.getStatus().name()));
+            lore.add(plugin.getLang().get("gui.common.price", "price", plugin.getEconomyManager().format(room.getPrice())));
+            lore.add(plugin.getLang().get("gui.common.world", "world", room.getWorldName()));
+            lore.add(plugin.getLang().get("gui.browse.size", "volume", room.getVolume()));
             if (!room.getTags().isEmpty()) {
-                lore.add("§7标签: " + room.getTagsDisplay());
+                lore.add(plugin.getLang().get("gui.common.tags", "tags", room.getTagsDisplay()));
             }
             if (room.isLocked()) {
-                lore.add("§c已锁定");
+                lore.add(plugin.getLang().get("gui.common.locked"));
             }
             if (room.hasPassword()) {
-                lore.add("§c有密码");
+                lore.add(plugin.getLang().get("gui.admin.has_password"));
             }
             if (room.isOccupied() && room.getCurrentGuestName() != null) {
-                lore.add("§7当前客人: §f" + room.getCurrentGuestName());
+                lore.add(plugin.getLang().get("gui.common.current_guest", "guest", room.getCurrentGuestName()));
             }
             lore.add("");
-            lore.add("§8左键: 管理房间");
-            lore.add("§8右键: 删除房间");
-            lore.add("§8Shift+左键: 传送");
+            lore.add(plugin.getLang().get("gui.admin.room_left"));
+            lore.add(plugin.getLang().get("gui.admin.room_right"));
+            lore.add(plugin.getLang().get("gui.admin.room_shift"));
 
             meta.setLore(lore);
             item.setItemMeta(meta);

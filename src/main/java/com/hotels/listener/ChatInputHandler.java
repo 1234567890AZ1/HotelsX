@@ -109,12 +109,12 @@ public class ChatInputHandler implements Listener {
 
         HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
         if (room == null) {
-            player.sendMessage("§c房间不存在或已删除");
+            plugin.getLang().send(player, "listener.chat.room_not_found_or_deleted");
             return;
         }
 
         if (!room.getOwner().equals(player.getUniqueId())) {
-            player.sendMessage("§c你不是这个房间的房主");
+            plugin.getLang().send(player, "common.not_room_owner");
             return;
         }
 
@@ -123,35 +123,35 @@ public class ChatInputHandler implements Listener {
                 try {
                     double price = Double.parseDouble(message);
                     if (price < 0) {
-                        player.sendMessage("§c价格不能为负数");
+                        plugin.getLang().send(player, "listener.chat.price_negative");
                         return;
                     }
                     if (price > 1000000) {
-                        player.sendMessage("§c价格太高了，最高 1000000");
+                        plugin.getLang().send(player, "listener.chat.price_too_high_max");
                         return;
                     }
                     room.setPrice(price);
                     plugin.getRoomStorage().saveRoom(room);
                     plugin.log(player, "设置房间价格: " + room.getName() + " = " + price);
-                    player.sendMessage("§a房间价格已设置为: §e" + plugin.getEconomyManager().format(price));
+                    plugin.getLang().send(player, "listener.chat.price_set", "price", plugin.getEconomyManager().format(price));
                 } catch (NumberFormatException e) {
-                    player.sendMessage("§c请输入有效的数字");
+                    plugin.getLang().send(player, "listener.chat.invalid_number");
                 }
                 break;
 
             case "setpassword":
                 if (message.length() > 20) {
-                    player.sendMessage("§c密码最长 20 个字符");
+                    plugin.getLang().send(player, "listener.chat.password_too_long");
                     return;
                 }
                 if (message.isEmpty()) {
-                    player.sendMessage("§c密码不能为空");
+                    plugin.getLang().send(player, "listener.chat.password_empty");
                     return;
                 }
                 room.setPassword(message);
                 plugin.getRoomStorage().saveRoom(room);
                 plugin.log(player, "设置房间密码: " + room.getName());
-                player.sendMessage("§a房间密码已设置");
+                plugin.getLang().send(player, "listener.chat.password_set");
                 break;
         }
     }
@@ -159,22 +159,22 @@ public class ChatInputHandler implements Listener {
     private void handleNonRoomContext(Player player, String context, String message) {
         if (context.equals("createcollection")) {
             if (message.length() > 32) {
-                player.sendMessage("§c合集名称最长 32 个字符");
+                plugin.getLang().send(player, "listener.chat.collection_name_too_long");
                 return;
             }
             if (message.isEmpty()) {
-                player.sendMessage("§c名称不能为空");
+                plugin.getLang().send(player, "listener.chat.name_empty");
                 return;
             }
 
             int maxCols = plugin.getConfig().getInt("max-collections-per-player", 5);
             int currentCols = plugin.getRoomStorage().getCollectionsByOwner(player.getUniqueId()).size();
             if (currentCols >= maxCols) {
-                player.sendMessage("§c你已达到最大合集数量限制 (" + maxCols + "个)");
+                plugin.getLang().send(player, "listener.chat.collection_limit", "max", maxCols);
                 return;
             }
 
-            player.sendMessage("§e请输入使用时长（分钟），输入 0 表示不限时:");
+            plugin.getLang().send(player, "listener.chat.enter_duration");
             plugin.getChatInputHandler().expectInput(player, "setcollectionduration:" + message);
             return;
         }
@@ -186,15 +186,15 @@ public class ChatInputHandler implements Listener {
             try {
                 duration = Integer.parseInt(message);
                 if (duration < 0) {
-                    player.sendMessage("§c时长不能为负数");
+                    plugin.getLang().send(player, "listener.chat.duration_negative");
                     return;
                 }
                 if (duration > 43200) {
-                    player.sendMessage("§c时长不能超过 43200 分钟（30天）");
+                    plugin.getLang().send(player, "listener.chat.duration_too_long");
                     return;
                 }
             } catch (NumberFormatException e) {
-                player.sendMessage("§c请输入有效的数字（分钟）");
+                plugin.getLang().send(player, "listener.chat.invalid_number_minutes");
                 return;
             }
 
@@ -208,11 +208,11 @@ public class ChatInputHandler implements Listener {
             plugin.log(player, "创建酒店合集: " + name + " (时长: " + duration + "分钟)");
 
             if (duration <= 0) {
-                player.sendMessage("§a酒店合集 §e" + name + " §a创建成功！不限时");
+                plugin.getLang().send(player, "listener.chat.collection_created_unlimited", "name", name);
             } else {
-                player.sendMessage("§a酒店合集 §e" + name + " §a创建成功！时长: " + duration + " 分钟");
+                plugin.getLang().send(player, "listener.chat.collection_created", "name", name, "minutes", duration);
             }
-            player.sendMessage("§7使用 §e/ht §7打开菜单管理合集");
+            plugin.getLang().send(player, "listener.chat.collection_manage_hint");
             return;
         }
 
@@ -224,12 +224,12 @@ public class ChatInputHandler implements Listener {
                     String name = col.getName();
                     plugin.getRoomStorage().removeCollection(colId);
                     plugin.log(player, "删除酒店合集: " + name);
-                    player.sendMessage("§c合集 §e" + name + " §c已删除");
+                    plugin.getLang().send(player, "listener.chat.collection_deleted", "name", name);
                 } else {
-                    player.sendMessage("§c合集不存在");
+                    plugin.getLang().send(player, "listener.chat.collection_not_found");
                 }
             } else {
-                player.sendMessage("§c已取消删除");
+                plugin.getLang().send(player, "listener.chat.delete_cancelled");
             }
             return;
         }
@@ -242,12 +242,12 @@ public class ChatInputHandler implements Listener {
                     String name = room.getName();
                     plugin.getRoomStorage().removeRoom(roomId);
                     plugin.log(player, "删除房间: " + name + " (ID: " + roomId + ")");
-                    player.sendMessage("§c房间 §e" + name + " §c已删除");
+                    plugin.getLang().send(player, "listener.chat.room_deleted", "name", name);
                 } else {
-                    player.sendMessage("§c房间不存在");
+                    plugin.getLang().send(player, "common.room_not_found");
                 }
             } else {
-                player.sendMessage("§c已取消删除");
+                plugin.getLang().send(player, "listener.chat.delete_cancelled");
             }
             return;
         }
@@ -257,17 +257,17 @@ public class ChatInputHandler implements Listener {
             try {
                 double price = Double.parseDouble(message);
                 if (price < 0) {
-                    player.sendMessage("§c折扣价不能为负数");
+                    plugin.getLang().send(player, "listener.chat.discount_negative");
                     return;
                 }
                 if (price > 1000000) {
-                    player.sendMessage("§c价格太高了");
+                    plugin.getLang().send(player, "listener.chat.price_too_high");
                     return;
                 }
-                player.sendMessage("§e请输入折扣持续时长（分钟），输入 0 取消:");
+                plugin.getLang().send(player, "listener.chat.enter_discount_duration");
                 plugin.getChatInputHandler().expectInput(player, "setdiscountduration:" + roomId + ":" + price);
             } catch (NumberFormatException e) {
-                player.sendMessage("§c请输入有效的数字");
+                plugin.getLang().send(player, "listener.chat.invalid_number");
             }
             return;
         }
@@ -280,37 +280,37 @@ public class ChatInputHandler implements Listener {
             try {
                 discountPrice = Double.parseDouble(parts[1]);
             } catch (NumberFormatException e) {
-                player.sendMessage("§c数据异常");
+                plugin.getLang().send(player, "listener.chat.data_error");
                 return;
             }
 
             try {
                 int minutes = Integer.parseInt(message);
                 if (minutes <= 0) {
-                    player.sendMessage("§c已取消折扣设置");
+                    plugin.getLang().send(player, "listener.chat.discount_cancelled");
                     return;
                 }
                 if (minutes > 43200) {
-                    player.sendMessage("§c时长不能超过 43200 分钟（30天）");
+                    plugin.getLang().send(player, "listener.chat.duration_too_long");
                     return;
                 }
 
                 com.hotels.model.HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
                 if (room == null) {
-                    player.sendMessage("§c房间不存在");
+                    plugin.getLang().send(player, "common.room_not_found");
                     return;
                 }
                 if (!room.getOwner().equals(player.getUniqueId())) {
-                    player.sendMessage("§c你不是这个房间的房主");
+                    plugin.getLang().send(player, "common.not_room_owner");
                     return;
                 }
 
                 room.setDiscount(discountPrice, minutes);
                 plugin.getRoomStorage().saveRoom(room);
                 plugin.log(player, "设置折扣: " + room.getName() + " 价格=" + discountPrice + " 时长=" + minutes + "分钟");
-                player.sendMessage("§a折扣已设置！价格 §e" + discountPrice + " §a持续 §e" + minutes + " §a分钟");
+                plugin.getLang().send(player, "listener.chat.discount_set", "price", discountPrice, "minutes", minutes);
             } catch (NumberFormatException e) {
-                player.sendMessage("§c请输入有效的数字（分钟）");
+                plugin.getLang().send(player, "listener.chat.invalid_number_minutes");
             }
             return;
         }
@@ -320,21 +320,21 @@ public class ChatInputHandler implements Listener {
             try {
                 double price = Double.parseDouble(message);
                 if (price < 0) {
-                    player.sendMessage("§c价格不能为负数");
+                    plugin.getLang().send(player, "listener.chat.price_negative");
                     return;
                 }
                 if (price > 1000000) {
-                    player.sendMessage("§c价格太高了，最高 1000000");
+                    plugin.getLang().send(player, "listener.chat.price_too_high_max");
                     return;
                 }
 
                 com.hotels.model.RoomCollection col = plugin.getRoomStorage().getCollection(colId);
                 if (col == null) {
-                    player.sendMessage("§c合集不存在");
+                    plugin.getLang().send(player, "listener.chat.collection_not_found");
                     return;
                 }
                 if (!col.canManage(player.getUniqueId())) {
-                    player.sendMessage("§c你没有权限管理此合集");
+                    plugin.getLang().send(player, "common.no_permission_manage_collection");
                     return;
                 }
 
@@ -348,9 +348,9 @@ public class ChatInputHandler implements Listener {
                     }
                 }
                 plugin.log(player, "合集一键定价: " + col.getName() + " 设置 " + count + " 个房间价格为 " + price);
-                player.sendMessage("§a已统一设置合集 §e" + col.getName() + " §a内 §e" + count + " §a个房间的价格为 §e" + price);
+                plugin.getLang().send(player, "listener.chat.collection_price_set", "name", col.getName(), "count", count, "price", price);
             } catch (NumberFormatException e) {
-                player.sendMessage("§c请输入有效的数字");
+                plugin.getLang().send(player, "listener.chat.invalid_number");
             }
             return;
         }
@@ -372,13 +372,13 @@ public class ChatInputHandler implements Listener {
                     String name = room.getName();
                     plugin.getRoomStorage().removeRoom(roomId);
                     plugin.log(player, "管理员删除房间: " + name + " (ID: " + roomId + ")");
-                    player.sendMessage("§c房间 §e" + name + " §c已删除");
+                    plugin.getLang().send(player, "listener.chat.room_deleted", "name", name);
                     com.hotels.gui.AdminPanelGUI.open(player, page);
                 } else {
-                    player.sendMessage("§c房间不存在");
+                    plugin.getLang().send(player, "common.room_not_found");
                 }
             } else {
-                player.sendMessage("§c已取消删除");
+                plugin.getLang().send(player, "listener.chat.delete_cancelled");
                 com.hotels.gui.AdminPanelGUI.open(player, page);
             }
             return;
@@ -389,10 +389,10 @@ public class ChatInputHandler implements Listener {
                 int count = plugin.getRoomStorage().getAllRooms().size();
                 plugin.getRoomStorage().clearAllRooms();
                 plugin.log(player, "管理员强制删除所有房间: 共 " + count + " 个");
-                player.sendMessage("§c已强制删除所有房间，共 §e" + count + " §c个");
+                plugin.getLang().send(player, "listener.chat.all_rooms_deleted", "count", count);
                 com.hotels.gui.AdminPanelGUI.open(player, 0);
             } else {
-                player.sendMessage("§c已取消删除");
+                plugin.getLang().send(player, "listener.chat.delete_cancelled");
                 com.hotels.gui.AdminPanelGUI.open(player, 0);
             }
             return;
@@ -407,23 +407,23 @@ public class ChatInputHandler implements Listener {
             }
 
             if (message.isEmpty()) {
-                player.sendMessage("§c搜索内容不能为空");
+                plugin.getLang().send(player, "listener.chat.search_empty");
                 com.hotels.gui.AdminPanelGUI.open(player, page);
                 return;
             }
 
             boolean found = false;
-            StringBuilder results = new StringBuilder("§e搜索结果:\n");
+            StringBuilder results = new StringBuilder(plugin.getLang().get("listener.chat.search_results_header")).append("\n");
             for (HotelRoom room : plugin.getRoomStorage().getAllRooms()) {
                 if (room.getName().toLowerCase().contains(message.toLowerCase()) ||
                     room.getId().toLowerCase().contains(message.toLowerCase())) {
-                    results.append("§6").append(room.getName()).append(" §7(ID: ").append(room.getId()).append(")\n");
+                    results.append(plugin.getLang().get("listener.chat.search_result_line", "name", room.getName(), "id", room.getId())).append("\n");
                     found = true;
                 }
             }
 
             if (!found) {
-                player.sendMessage("§c未找到匹配的房间");
+                plugin.getLang().send(player, "listener.chat.no_room_match");
             } else {
                 player.sendMessage(results.toString());
             }
@@ -433,7 +433,7 @@ public class ChatInputHandler implements Listener {
 
         if (context.equals("browse_search")) {
             if (message.isEmpty()) {
-                player.sendMessage("§c搜索内容不能为空");
+                plugin.getLang().send(player, "listener.chat.search_empty");
                 com.hotels.gui.BrowseRoomsGUI.open(player, plugin);
                 return;
             }
@@ -445,7 +445,7 @@ public class ChatInputHandler implements Listener {
                     .collect(java.util.stream.Collectors.toList());
 
             if (filtered.isEmpty()) {
-                player.sendMessage("§c未找到匹配的房间");
+                plugin.getLang().send(player, "listener.chat.no_room_match");
                 com.hotels.gui.BrowseRoomsGUI.open(player, plugin);
             } else {
                 com.hotels.gui.BrowseRoomsGUI.openWithRooms(player, filtered, plugin, null, 0);
@@ -455,7 +455,7 @@ public class ChatInputHandler implements Listener {
 
         if (context.equals("myrooms_search")) {
             if (message.isEmpty()) {
-                player.sendMessage("§c搜索内容不能为空");
+                plugin.getLang().send(player, "listener.chat.search_empty");
                 com.hotels.gui.MyRoomsGUI.open(player, plugin, 0);
                 return;
             }
@@ -467,7 +467,7 @@ public class ChatInputHandler implements Listener {
                     .collect(java.util.stream.Collectors.toList());
 
             if (filtered.isEmpty()) {
-                player.sendMessage("§c未找到匹配的房间");
+                plugin.getLang().send(player, "listener.chat.no_room_match");
                 com.hotels.gui.MyRoomsGUI.open(player, plugin, 0);
             } else {
                 com.hotels.gui.MyRoomsGUI.openWithRooms(player, filtered, plugin, 0);
@@ -484,7 +484,7 @@ public class ChatInputHandler implements Listener {
             }
 
             if (message.isEmpty()) {
-                player.sendMessage("§c搜索内容不能为空");
+                plugin.getLang().send(player, "listener.chat.search_empty");
                 com.hotels.gui.CollectionGUI.openBrowseAll(player, plugin, page);
                 return;
             }
@@ -495,7 +495,7 @@ public class ChatInputHandler implements Listener {
                     .collect(java.util.stream.Collectors.toList());
 
             if (filtered.isEmpty()) {
-                player.sendMessage("§c未找到匹配的酒店");
+                plugin.getLang().send(player, "listener.chat.no_hotel_match");
                 com.hotels.gui.CollectionGUI.openBrowseAll(player, plugin, page);
             } else {
                 com.hotels.gui.CollectionGUI.openBrowseAll(player, plugin, filtered, 0);
@@ -505,7 +505,7 @@ public class ChatInputHandler implements Listener {
 
         if (context.equals("mycollection_search")) {
             if (message.isEmpty()) {
-                player.sendMessage("§c搜索内容不能为空");
+                plugin.getLang().send(player, "listener.chat.search_empty");
                 com.hotels.gui.CollectionGUI.openMyCollections(player, plugin);
                 return;
             }
@@ -516,7 +516,7 @@ public class ChatInputHandler implements Listener {
                     .collect(java.util.stream.Collectors.toList());
 
             if (filtered.isEmpty()) {
-                player.sendMessage("§c未找到匹配的酒店");
+                plugin.getLang().send(player, "listener.chat.no_hotel_match");
                 com.hotels.gui.CollectionGUI.openMyCollections(player, plugin);
             } else {
                 com.hotels.gui.CollectionGUI.openMyCollections(player, plugin, filtered);
@@ -528,13 +528,13 @@ public class ChatInputHandler implements Listener {
             String colId = context.substring("managecollection_search:".length());
             com.hotels.model.RoomCollection col = plugin.getRoomStorage().getCollection(colId);
             if (col == null) {
-                player.sendMessage("§c合集不存在");
+                plugin.getLang().send(player, "listener.chat.collection_not_found");
                 com.hotels.gui.CollectionGUI.openManage(player);
                 return;
             }
 
             if (message.isEmpty()) {
-                player.sendMessage("§c搜索内容不能为空");
+                plugin.getLang().send(player, "listener.chat.search_empty");
                 com.hotels.gui.CollectionGUI.openManageCollection(player, col, plugin);
                 return;
             }
@@ -546,7 +546,7 @@ public class ChatInputHandler implements Listener {
                     .collect(java.util.stream.Collectors.toList());
 
             if (filtered.isEmpty()) {
-                player.sendMessage("§c未找到匹配的房间");
+                plugin.getLang().send(player, "listener.chat.no_room_match");
                 com.hotels.gui.CollectionGUI.openManageCollection(player, col, plugin);
             } else {
                 com.hotels.gui.CollectionGUI.openManageCollection(player, col, plugin, filtered, 0);
@@ -558,7 +558,7 @@ public class ChatInputHandler implements Listener {
         if (context.startsWith("web_register_pwd:")) {
             String username = context.substring("web_register_pwd:".length());
             if (message.length() < 4) {
-                player.sendMessage("§c密码至少4位，请重新输入:");
+                plugin.getLang().send(player, "listener.chat.password_min_length");
                 plugin.getChatInputHandler().expectInput(player, context);
                 return;
             }
@@ -566,12 +566,12 @@ public class ChatInputHandler implements Listener {
             if (err != null) {
                 player.sendMessage("§c" + err);
             } else {
-                player.sendMessage("§a注册成功！");
-                player.sendMessage("§7账户: §e" + username);
-                player.sendMessage("§7角色: §e普通用户");
-                player.sendMessage("§7已关联游戏ID: §e" + player.getName());
+                plugin.getLang().send(player, "listener.chat.register_success");
+                plugin.getLang().send(player, "listener.chat.account", "username", username);
+                plugin.getLang().send(player, "listener.chat.role_user");
+                plugin.getLang().send(player, "listener.chat.linked_game_id", "player", player.getName());
                 if (plugin.getWebServer().isRunning()) {
-                    player.sendMessage("§7访问: §ehttp://<服务器IP>:" + plugin.getWebServer().getPort());
+                    plugin.getLang().send(player, "listener.chat.web_access", "port", plugin.getWebServer().getPort());
                 }
             }
             return;
@@ -580,7 +580,7 @@ public class ChatInputHandler implements Listener {
         // Web 账户修改密码（/ht web changepwd 后聊天输入）
         if (context.equals("web_changepwd")) {
             if (message.length() < 4) {
-                player.sendMessage("§c密码至少4位，请重新输入:");
+                plugin.getLang().send(player, "listener.chat.password_min_length");
                 plugin.getChatInputHandler().expectInput(player, context);
                 return;
             }
@@ -588,7 +588,7 @@ public class ChatInputHandler implements Listener {
             if (err != null) {
                 player.sendMessage("§c" + err);
             } else {
-                player.sendMessage("§a密码修改成功！请使用新密码登录 Web 面板");
+                plugin.getLang().send(player, "listener.chat.password_changed");
             }
             return;
         }
@@ -598,11 +598,11 @@ public class ChatInputHandler implements Listener {
             String roomId = context.substring("checkin_password:".length());
             HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
             if (room == null) {
-                player.sendMessage("§c房间不存在或已删除");
+                plugin.getLang().send(player, "listener.chat.room_not_found_or_deleted");
                 return;
             }
             if (!room.checkPassword(message)) {
-                player.sendMessage("§c密码错误");
+                plugin.getLang().send(player, "listener.chat.password_wrong");
                 return;
             }
             // 密码验证通过后触发自动迁移，保存房间

@@ -72,10 +72,10 @@ public class SelectionListener implements Listener {
 
             selectionManager.setPos1(player, loc);
             plugin.log(player, "设置选区第1点: (" + (int)loc.getX() + ", " + (int)loc.getY() + ", " + (int)loc.getZ() + ")");
-            player.sendMessage(String.format(
-                    "§a已设置第 1 点: §e(%.0f, %.0f, %.0f)",
-                    loc.getX(), loc.getY(), loc.getZ()
-            ));
+            plugin.getLang().send(player, "listener.selection.pos1_set",
+                    "x", String.format("%.0f", loc.getX()),
+                    "y", String.format("%.0f", loc.getY()),
+                    "z", String.format("%.0f", loc.getZ()));
 
         } else if (event.getAction() == Action.RIGHT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_AIR) {
             // 右键 - 设置 Pos2
@@ -86,10 +86,10 @@ public class SelectionListener implements Listener {
 
             selectionManager.setPos2(player, loc);
             plugin.log(player, "设置选区第2点: (" + (int)loc.getX() + ", " + (int)loc.getY() + ", " + (int)loc.getZ() + ")");
-            player.sendMessage(String.format(
-                    "§a已设置第 2 点: §e(%.0f, %.0f, %.0f)",
-                    loc.getX(), loc.getY(), loc.getZ()
-            ));
+            plugin.getLang().send(player, "listener.selection.pos2_set",
+                    "x", String.format("%.0f", loc.getX()),
+                    "y", String.format("%.0f", loc.getY()),
+                    "z", String.format("%.0f", loc.getZ()));
 
             // 如果两个点都选好了，显示区域信息
             if (selectionManager.getSelection(player).hasBothPositions()) {
@@ -99,8 +99,9 @@ public class SelectionListener implements Listener {
                 long dy = Math.abs((long) Math.ceil(p1.getY()) - (long) Math.ceil(p2.getY())) + 1;
                 long dz = Math.abs((long) Math.ceil(p1.getZ()) - (long) Math.ceil(p2.getZ())) + 1;
                 long volume = dx * dy * dz;
-                player.sendMessage("§7区域大小: §e" + dx + " × " + dy + " × " + dz + " §7(§e" + volume + " §7方块)");
-                player.sendMessage("§7站在传送点位置，输入 §e/ht create <名称> §7创建房间");
+                plugin.getLang().send(player, "listener.selection.region_size",
+                        "x", dx, "y", dy, "z", dz, "volume", volume);
+                plugin.getLang().send(player, "listener.selection.create_hint");
             }
         }
     }

@@ -40,66 +40,76 @@ public class RoomManageGUI {
     public static final String GUI_NAME = "room_manage";
 
     public static void open(Player player, HotelRoom room, HotelsPlugin plugin) {
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME, room), 27, "§8§l房间管理");
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME, room), 27, plugin.getLang().get("gui.room_manage.title"));
 
         inv.setItem(4, createRoomInfoItem(room));
 
-        inv.setItem(10, createItem(Material.GOLD_INGOT, "§e§l设置价格",
-                "§7当前价格: §f" + room.getPrice(),
-                "§e点击设置新价格"));
+        inv.setItem(10, createItem(Material.GOLD_INGOT, plugin.getLang().get("gui.room_manage.set_price_name"),
+                plugin.getLang().get("gui.room_manage.set_price_current", "price", room.getPrice()),
+                plugin.getLang().get("gui.room_manage.set_price_hint")));
 
-        String discountStatus = room.hasActiveDiscount() ? "§a进行中 §7(¥" + room.getDiscountPrice() + ")" : "§7未设置";
-        inv.setItem(11, createItem(Material.FIREWORK_STAR, "§e§l限时折扣",
-                "§7状态: " + discountStatus,
-                "§e点击设置折扣价和时长"));
+        inv.setItem(11, createItem(Material.FIREWORK_STAR, plugin.getLang().get("gui.room_manage.discount_name"),
+                plugin.getLang().get(room.hasActiveDiscount() ? "gui.room_manage.discount_status_active" : "gui.room_manage.discount_status_unset", "price", room.getDiscountPrice()),
+                plugin.getLang().get("gui.room_manage.discount_hint")));
 
-        inv.setItem(12, createItem(Material.NAME_TAG, "§e§l设置标签",
-                "§7当前: " + room.getTagsDisplay(),
-                "§e点击设置标签（最多3个）"));
+        inv.setItem(12, createItem(Material.NAME_TAG, plugin.getLang().get("gui.room_manage.tag_name"),
+                plugin.getLang().get("gui.room_manage.tag_current", "tags", room.getTagsDisplay()),
+                plugin.getLang().get("gui.room_manage.tag_hint")));
 
-        String pwStatus = room.hasPassword() ? "§c已设置" : "§7未设置";
-        inv.setItem(13, createItem(Material.TRIPWIRE_HOOK, "§e§l设置密码",
-                "§7密码状态: " + pwStatus,
-                "§e点击设置或清除密码"));
+        inv.setItem(13, createItem(Material.TRIPWIRE_HOOK, plugin.getLang().get("gui.room_manage.pwd_name"),
+                plugin.getLang().get(room.hasPassword() ? "gui.room_manage.pwd_status_active" : "gui.room_manage.pwd_status_unset"),
+                plugin.getLang().get("gui.room_manage.pwd_hint")));
 
-        String lockStatus = room.isLocked() ? "§a已解锁" : "§c已锁定";
-        inv.setItem(14, createItem(Material.IRON_DOOR, "§e§l切换锁定",
-                "§7当前: " + lockStatus,
-                "§e点击切换"));
+        inv.setItem(14, createItem(Material.IRON_DOOR, plugin.getLang().get("gui.room_manage.lock_name"),
+                plugin.getLang().get(room.isLocked() ? "gui.room_manage.lock_line_unlocked" : "gui.room_manage.lock_line_locked"),
+                plugin.getLang().get("gui.room_manage.lock_hint")));
 
-        inv.setItem(15, createItem(Material.REDSTONE, "§e§l切换状态",
-                "§7当前: " + getStatusDisplay(room.getStatus()),
-                "§e点击切换状态"));
+        inv.setItem(15, createItem(Material.REDSTONE, plugin.getLang().get("gui.room_manage.status_name"),
+                plugin.getLang().get("gui.room_manage.status_line", "status", getStatusDisplay(room.getStatus())),
+                plugin.getLang().get("gui.room_manage.status_hint")));
 
-        inv.setItem(21, createItem(Material.ENDER_PEARL, "§d§l传送至房间",
-                "§7传送到房间入口"));
+        inv.setItem(21, createItem(Material.ENDER_PEARL, plugin.getLang().get("gui.room_manage.tp_name"),
+                plugin.getLang().get("gui.room_manage.tp_lore")));
 
         if (room.isOccupied()) {
-            inv.setItem(23, createItem(Material.IRON_SWORD, "§c§l踢出客人",
-                    "§7当前客人: §f" + room.getCurrentGuestName(),
-                    "§c点击踢出客人"));
+            inv.setItem(23, createItem(Material.IRON_SWORD, plugin.getLang().get("gui.room_manage.kick_name"),
+                    plugin.getLang().get("gui.common.current_guest", "guest", room.getCurrentGuestName()),
+                    plugin.getLang().get("gui.room_manage.kick_lore")));
         }
 
-        inv.setItem(26, createItem(Material.ARROW, "§7§l返回",
-                "§7返回我的房间"));
+        inv.setItem(26, createItem(Material.ARROW, plugin.getLang().get("gui.common.back_gold"),
+                plugin.getLang().get("gui.room_manage.back_lore")));
 
         player.openInventory(inv);
     }
 
     private static ItemStack createRoomInfoItem(HotelRoom room) {
+        HotelsPlugin plugin = HotelsPlugin.getInstance();
         ItemStack item = new ItemStack(Material.OAK_DOOR);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName("§6" + room.getName());
+
+            String durationLine = room.getDurationMinutes() == -1
+                    ? plugin.getLang().get("gui.room_manage.info_duration_default")
+                    : plugin.getLang().get("gui.room_manage.info_duration", "duration", room.getDurationDisplay(0));
+            String discountLine = room.hasActiveDiscount()
+                    ? plugin.getLang().get("gui.room_manage.info_discount", "price", room.getDiscountPrice())
+                    : plugin.getLang().get("gui.room_manage.info_discount_none");
+            String lockedLine = plugin.getLang().get("gui.room_manage.info_locked", "value",
+                    plugin.getLang().get(room.isLocked() ? "common.yes" : "common.no"));
+            String passwordLine = plugin.getLang().get("gui.room_manage.info_password", "value",
+                    plugin.getLang().get(room.hasPassword() ? "common.yes" : "common.no"));
+
             meta.setLore(Arrays.asList(
-                    "§7ID: §f" + room.getId(),
-                    "§7状态: " + getStatusDisplay(room.getStatus()),
-                    "§7价格: §f" + room.getPrice(),
-                    "§7标签: " + room.getTagsDisplay(),
-                    "§7时长: " + (room.getDurationMinutes() == -1 ? "§7使用合集默认" : room.getDurationDisplay(0)),
-                    "§7折扣: " + (room.hasActiveDiscount() ? "§a¥" + room.getDiscountPrice() : "§7无"),
-                    "§7锁定: " + (room.isLocked() ? "§c是" : "§a否"),
-                    "§7密码: " + (room.hasPassword() ? "§c是" : "§a否")
+                    plugin.getLang().get("gui.common.id", "id", room.getId()),
+                    plugin.getLang().get("gui.common.status", "status", getStatusDisplay(room.getStatus())),
+                    plugin.getLang().get("gui.common.price", "price", room.getPrice()),
+                    plugin.getLang().get("gui.common.tags", "tags", room.getTagsDisplay()),
+                    durationLine,
+                    discountLine,
+                    lockedLine,
+                    passwordLine
             ));
             item.setItemMeta(meta);
         }
@@ -121,10 +131,10 @@ public class RoomManageGUI {
 
     private static String getStatusDisplay(HotelRoom.RoomStatus status) {
         switch (status) {
-            case AVAILABLE: return "§a空闲";
-            case OCCUPIED: return "§c已入住";
-            case MAINTENANCE: return "§7维护中";
-            default: return "§7未知";
+            case AVAILABLE: return HotelsPlugin.getInstance().getLang().get("command.status.available");
+            case OCCUPIED: return HotelsPlugin.getInstance().getLang().get("command.status.occupied");
+            case MAINTENANCE: return HotelsPlugin.getInstance().getLang().get("command.status.maintenance");
+            default: return HotelsPlugin.getInstance().getLang().get("command.status.unknown");
         }
     }
 }

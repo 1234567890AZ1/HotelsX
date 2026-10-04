@@ -52,7 +52,6 @@ import java.util.stream.Collectors;
 public class MainMenuGUI {
 
     public static final String GUI_NAME = "main_menu";
-    private static final String TITLE = "§6§l酒 店 礼 宾 台";
 
     /** 檐口：琥珀色玻璃板，读作大堂上方的暖光灯带 */
     private static final Material RAIL = Material.ORANGE_STAINED_GLASS_PANE;
@@ -65,7 +64,8 @@ public class MainMenuGUI {
     private static final String RULE = "§8§m                    ";
 
     public static void open(Player player) {
-        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME), 45, TITLE);
+        HotelsPlugin plugin = HotelsPlugin.getInstance();
+        Inventory inv = Bukkit.createInventory(new GUIHolder(GUI_NAME), 45, plugin.getLang().get("gui.main_menu.title"));
 
         fill(inv, RAIL, 1, 2, 3, 5, 6, 7, 37, 38, 39, 40, 41, 42, 43);
         fill(inv, POST, 0, 8, 9, 17, 18, 26, 27, 35, 36, 44);
@@ -77,67 +77,67 @@ public class MainMenuGUI {
         int maintenance = countByStatus(HotelRoom.RoomStatus.MAINTENANCE);
 
         // 台面正中：礼宾铃，兼作欢迎牌与实时概览
-        inv.setItem(4, createItem(Material.BELL, "§6§l酒 店 礼 宾 台",
-                "§7欢迎回来，§f" + player.getName(),
+        inv.setItem(4, createItem(Material.BELL, plugin.getLang().get("gui.main_menu.title"),
+                plugin.getLang().get("gui.main_menu.welcome", "player", player.getName()),
                 RULE,
-                "§7我的房间 §f" + myRooms + " §8| §7空闲中 §a" + available,
+                plugin.getLang().get("gui.main_menu.summary", "rooms", myRooms, "available", available),
                 RULE,
-                "§8请在下方选择要办理的业务"));
+                plugin.getLang().get("gui.main_menu.prompt")));
 
         // 第一排：房间业务
-        inv.setItem(11, createItem(Material.OAK_DOOR, "§6§l我的房间",
-                "§7查看和管理你拥有的房间",
+        inv.setItem(11, createItem(Material.OAK_DOOR, plugin.getLang().get("gui.main_menu.my_rooms_name"),
+                plugin.getLang().get("gui.main_menu.my_rooms_lore1"),
                 RULE,
-                "§7持有房间 §f" + myRooms + " §7个",
+                plugin.getLang().get("gui.main_menu.my_rooms_lore2", "count", myRooms),
                 RULE,
-                "§8» 点击进入"));
+                plugin.getLang().get("gui.main_menu.click_enter")));
 
-        inv.setItem(13, createItem(Material.COMPASS, "§6§l浏览房间",
-                "§7查看所有可入住的房间",
+        inv.setItem(13, createItem(Material.COMPASS, plugin.getLang().get("gui.main_menu.browse_name"),
+                plugin.getLang().get("gui.main_menu.browse_lore1"),
                 RULE,
-                "§7当前空闲 §f" + available + " §7间",
+                plugin.getLang().get("gui.main_menu.browse_lore2", "count", available),
                 RULE,
-                "§8» 点击浏览"));
+                plugin.getLang().get("gui.main_menu.click_browse")));
 
-        inv.setItem(15, createItem(Material.EMERALD_BLOCK, "§6§l创建新房间",
-                "§7选区后即可开设新房间",
+        inv.setItem(15, createItem(Material.EMERALD_BLOCK, plugin.getLang().get("gui.main_menu.create_name"),
+                plugin.getLang().get("gui.main_menu.create_lore1"),
                 RULE,
-                "§7第一步 §f手持木斧选两点",
-                "§7第二步 §f站在传送点上",
-                "§7第三步 §f/ht create <名称>",
+                plugin.getLang().get("gui.main_menu.create_lore2"),
+                plugin.getLang().get("gui.main_menu.create_lore3"),
+                plugin.getLang().get("gui.main_menu.create_lore4"),
                 RULE,
-                "§8» 点击查看指引"));
+                plugin.getLang().get("gui.main_menu.create_lore5")));
 
         // 中庭：大堂看板
-        inv.setItem(22, createItem(Material.OAK_SIGN, "§e§l今日概览",
-                "§7礼宾台实时统计",
+        inv.setItem(22, createItem(Material.OAK_SIGN, plugin.getLang().get("gui.main_menu.overview_name"),
+                plugin.getLang().get("gui.main_menu.overview_lore1"),
                 RULE,
-                "§7房间总数 §f" + countTotalRooms(),
-                "§7空闲中 §a" + available,
-                "§7已入住 §c" + occupied,
-                "§7维护中 §7" + maintenance,
+                plugin.getLang().get("gui.main_menu.overview_lore2", "count", countTotalRooms()),
+                plugin.getLang().get("gui.main_menu.overview_lore3", "count", available),
+                plugin.getLang().get("gui.main_menu.overview_lore4", "count", occupied),
+                plugin.getLang().get("gui.main_menu.overview_lore5", "count", maintenance),
                 RULE,
-                "§8数据于打开界面时统计"));
+                plugin.getLang().get("gui.main_menu.overview_lore6")));
 
         // 第三排：后台事务
-        inv.setItem(29, createItem(Material.CHEST, "§f§l酒店合集",
-                "§7创建和管理房间合集",
-                "§7浏览其他玩家开设的酒店",
+        inv.setItem(29, createItem(Material.CHEST, plugin.getLang().get("gui.main_menu.collection_name"),
+                plugin.getLang().get("gui.main_menu.collection_lore1"),
+                plugin.getLang().get("gui.main_menu.collection_lore2"),
                 RULE,
-                "§8» 点击进入"));
+                plugin.getLang().get("gui.main_menu.click_enter")));
 
-        inv.setItem(31, createItem(Material.BOOK, "§f§l帮助说明",
-                "§7查看酒店系统使用指南",
-                "§7命令列表与玩法说明",
+        inv.setItem(31, createItem(Material.BOOK, plugin.getLang().get("gui.main_menu.help_name"),
+                plugin.getLang().get("gui.main_menu.help_lore1"),
+                plugin.getLang().get("gui.main_menu.help_lore2"),
                 RULE,
-                "§8» 点击查看"));
+                plugin.getLang().get("gui.main_menu.click_view")));
 
-        inv.setItem(33, createItem(Material.GOLD_BLOCK, "§f§l房间排行榜",
-                "§7查看最大的房间排名",
+        inv.setItem(33, createItem(Material.GOLD_BLOCK, plugin.getLang().get("gui.main_menu.ranking_name"),
+                plugin.getLang().get("gui.main_menu.ranking_lore1"),
                 RULE,
-                "§7榜单长度 §fTOP 10",
+                plugin.getLang().get("gui.main_menu.ranking_lore2"),
                 RULE,
-                "§8» 点击查看"));
+                plugin.getLang().get("gui.main_menu.click_view")));
 
         player.openInventory(inv);
     }
@@ -182,10 +182,7 @@ public class MainMenuGUI {
 
     public static void openRanking(Player player) {
         HotelsPlugin plugin = HotelsPlugin.getInstance();
-        if (plugin == null) {
-            player.sendMessage("§c插件未就绪");
-            return;
-        }
+        if (plugin == null) return;
 
         List<HotelRoom> allRooms = new ArrayList<>(plugin.getRoomStorage().getAllRooms());
         allRooms.sort((a, b) -> Long.compare(b.getVolume(), a.getVolume()));
@@ -193,7 +190,7 @@ public class MainMenuGUI {
         List<HotelRoom> top = allRooms.stream().limit(10).collect(Collectors.toList());
 
         int size = Math.min(54, Math.max(9, ((top.size() / 9) + 2) * 9));
-        Inventory inv = Bukkit.createInventory(new GUIHolder("ranking"), size, "§8§l房间排行榜");
+        Inventory inv = Bukkit.createInventory(new GUIHolder("ranking"), size, plugin.getLang().get("gui.ranking.title"));
 
         ItemStack border = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
         for (int i = 0; i < 9; i++) {
@@ -224,10 +221,10 @@ public class MainMenuGUI {
             if (meta != null) {
                 meta.setDisplayName(rankColor + "§l#" + rank + " §f" + room.getName());
                 meta.setLore(Arrays.asList(
-                        "§7房主: §f" + room.getOwnerName(),
-                        "§7大小: §f" + room.getVolume() + " §7方块",
-                        "§7状态: " + getStatusDisplay(room.getStatus()),
-                        "§7世界: §f" + room.getWorldName()
+                        plugin.getLang().get("gui.common.owner", "owner", room.getOwnerName()),
+                        plugin.getLang().get("gui.ranking.size", "volume", room.getVolume()),
+                        plugin.getLang().get("gui.common.status", "status", getStatusDisplay(room.getStatus())),
+                        plugin.getLang().get("gui.common.world", "world", room.getWorldName())
                 ));
                 item.setItemMeta(meta);
             }
@@ -236,17 +233,19 @@ public class MainMenuGUI {
             rank++;
         }
 
-        inv.setItem(size - 1, createItem(Material.ARROW, "§7§l返回", "§8返回主菜单"));
+        inv.setItem(size - 1, createItem(Material.ARROW,
+                plugin.getLang().get("gui.common.back_gold"),
+                plugin.getLang().get("gui.common.back_to_main_lore")));
 
         player.openInventory(inv);
     }
 
     private static String getStatusDisplay(HotelRoom.RoomStatus status) {
         switch (status) {
-            case AVAILABLE: return "§a空闲";
-            case OCCUPIED: return "§c已入住";
-            case MAINTENANCE: return "§7维护中";
-            default: return "§7未知";
+            case AVAILABLE: return HotelsPlugin.getInstance().getLang().get("command.status.available");
+            case OCCUPIED: return HotelsPlugin.getInstance().getLang().get("command.status.occupied");
+            case MAINTENANCE: return HotelsPlugin.getInstance().getLang().get("command.status.maintenance");
+            default: return HotelsPlugin.getInstance().getLang().get("command.status.unknown");
         }
     }
 

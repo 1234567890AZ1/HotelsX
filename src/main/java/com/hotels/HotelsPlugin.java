@@ -25,6 +25,7 @@
 package com.hotels;
 
 import com.hotels.command.HotelsCommand;
+import com.hotels.i18n.Lang;
 import com.hotels.listener.ChatInputHandler;
 import com.hotels.listener.DoorGuardListener;
 import com.hotels.listener.ElevatorListener;
@@ -71,6 +72,7 @@ public class HotelsPlugin extends JavaPlugin {
     private WebServer webServer;
     private ShopService shopService;
     private ShopContainerListener shopContainerListener;
+    private Lang lang;
     private boolean debugMode;
     private boolean elevatorEnabled;
     private SchedulerCompat.CancellableTask autoCheckoutTask;
@@ -85,6 +87,10 @@ public class HotelsPlugin extends JavaPlugin {
 
         // 保存默认配置
         saveDefaultConfig();
+
+        // 初始化语言包：必须早于其它管理器，因为它们的构造可能就要用到文案
+        this.lang = new Lang(this);
+        this.lang.load();
 
         // 初始化管理器
         this.roomStorage = new RoomStorage(this);
@@ -195,6 +201,7 @@ public class HotelsPlugin extends JavaPlugin {
     public CheckinHandler getCheckinHandler() { return checkinHandler; }
     public ChatInputHandler getChatInputHandler() { return chatInputHandler; }
     public WebServer getWebServer() { return webServer; }
+    public Lang getLang() { return lang; }
 
     public boolean isDebugMode() { return debugMode; }
 
@@ -280,7 +287,7 @@ public class HotelsPlugin extends JavaPlugin {
             if (now >= expireTime) {
                 Player guest = Bukkit.getPlayer(room.getCurrentGuest());
                 if (guest != null && guest.isOnline()) {
-                    guest.sendMessage("§c入住时间已到，自动退房");
+                    lang.send(guest, "checkin.expired");
                     checkinHandler.checkout(guest);
                 } else {
                     checkinHandler.forceCheckout(room.getCurrentGuest());
@@ -327,11 +334,13 @@ public class HotelsPlugin extends JavaPlugin {
                 alertedRooms.put(room.getId(), false);
             } else if (!alerted) {
                 alertedRooms.put(room.getId(), true);
-                guest.sendMessage("§c你的房间 §e" + room.getName() + " §c即将到期（剩余 " + formatRemain(remainSec) + "）");
-                guest.sendMessage("§7输入 §e/ht extend " + room.getId() + " <分钟> §7可续费延长入住");
+                lang.send(guest, "plugin.reminder.expiring",
+                        "room", room.getName(), "time", formatRemain(remainSec));
+                lang.send(guest, "plugin.reminder.extend_hint", "id", room.getId());
             }
             String color = remainSec <= 300 ? "§c" : "§f";
-            guest.sendActionBar("§a房间 §e" + room.getName() + "§a 剩余入住时间: " + color + formatRemain(remainSec));
+            guest.sendActionBar(lang.get("plugin.actionbar.remaining",
+                    "room", room.getName(), "time", color + formatRemain(remainSec)));
         }
     }
 
@@ -340,9 +349,9 @@ public class HotelsPlugin extends JavaPlugin {
      */
     private String formatRemain(long sec) {
         long h = sec / 3600, m = (sec % 3600) / 60, s = sec % 60;
-        if (h > 0) return h + "小时" + m + "分";
-        if (m > 0) return m + "分" + s + "秒";
-        return s + "秒";
+        if (h > 0) return lang.get("common.time.hm", "h", h, "m", m);
+        if (m > 0) return lang.get("common.time.ms", "m", m, "s", s);
+        return lang.get("common.time.s", "s", s);
     }
 
     /**

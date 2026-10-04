@@ -1269,7 +1269,7 @@ public class WebServer {
                     }
                     default -> {
                         // chat
-                        String prefix = "§e[§6公告§e] §r";
+                        String prefix = plugin.getLang().get("web.broadcast_prefix");
                         if (finalReceiver != null) {
                             finalReceiver.sendMessage(prefix + finalMsg);
                         } else {
