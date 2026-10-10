@@ -296,7 +296,8 @@ public class HotelsPlugin extends JavaPlugin {
             }
         }
 
-        if (checked > 0) {
+        // 仅在真的有房间到期退房时才打印，避免每 30 秒刷屏
+        if (expired > 0) {
             getLogger().info("检查 " + checked + " 个入住房间，已自动退房 " + expired + " 个");
         }
     }
