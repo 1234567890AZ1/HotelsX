@@ -51,7 +51,7 @@ HotelsX 是 Minecraft 服务器的一体化酒店管理插件（当前 v1.5.0，
 
 ## Brand Commitments
 
-- 产品名 HotelsX，命令 `/hotels`（别名 `/ht`），当前版本 1.5.0。
+- 产品名 HotelsX（对外别名 StayX），命令 `/hotels`（别名 `/ht`、`/stayx`），当前版本 1.5.0。
 - 官方运营语言为中文（界面与注释以中文为主）。
 - MIT License 开源。
 - 未决（未确认绑定）：Web 面板当前视觉惯例（深色卡片 + 紫色渐变侧边栏）为现状实现，尚未被所有者确认作为持久的品牌视觉承诺；Store 店面 UI 风格同样待确认。

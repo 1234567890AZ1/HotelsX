@@ -5,11 +5,12 @@ api-version: '1.21'
 folia-supported: true
 authors: ['1234567890AZ2']
 description: '玩家圈地创建酒店房间，支持入住/租赁、上锁、经济系统的酒店管理插件'
+website: 'https://qm.qq.com/q/Ub0FJXfWSI'
 soft-depend: ['Vault']
 commands:
     hotels:
         description: '酒店系统主命令'
-        aliases: ['ht']
+        aliases: ['ht', 'stayx']
 permissions:
     hotels.use:
         description: '允许使用酒店系统'

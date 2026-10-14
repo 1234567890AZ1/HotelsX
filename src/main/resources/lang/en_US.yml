@@ -411,6 +411,7 @@ gui:
     help_name: "&f&lHelp"
     help_lore1: "&7View the hotel system guide"
     help_lore2: "&7Command list and gameplay tips"
+    qq_line: "&7Join our QQ group: &b{qq}"
     ranking_name: "&f&lRoom Ranking"
     ranking_lore1: "&7View the largest room ranking"
     ranking_lore2: "&7Ranking length &fTOP 10"

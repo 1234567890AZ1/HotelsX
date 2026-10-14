@@ -7,6 +7,11 @@ ScriptIrc-config-version: 1
 # 语言文件位于 plugins/HotelsX/lang/，可自行修改文案
 language: zh_CN
 
+# 社区信息（显示在主菜单「帮助」物品的说明里）
+community:
+  # QQ 群邀请链接，留空则不显示该行
+  qq-group: 'https://qm.qq.com/q/Ub0FJXfWSI'
+
 # 每个玩家最大房间数
 max-rooms-per-player: 10
 

@@ -1,6 +1,19 @@
-# HotelsX - 酒店房间管理系统
+# HotelsX（别名 StayX） - 酒店房间管理系统
 
 一个 Bukkit/Spigot/Paper 插件，玩家可以圈地创建酒店房间，其他玩家可以付费入住。
+
+命令为 `/hotels`，别名 `/ht`、`/stayx`（三者等价）。StayX 是 HotelsX 的对外别名，主名与数据目录保持不变。
+
+## 发布渠道
+
+| 渠道 | 版本 | 链接 |
+|------|------|------|
+| Modrinth | 正式版 | https://modrinth.com/plugin/hotelsx |
+| MineBBS | 正式版 | https://www.minebbs.com/resources/hotelsx.16797/ |
+| GitHub | 测试版 | https://github.com/1234567890AZ1/HotelsX |
+| QQ 群 | 测试版 | https://qm.qq.com/q/Ub0FJXfWSI |
+
+正式版为稳定发布；测试版包含尚未发布的改动，可能不稳定。Modrinth 另有等价的项目 ID 入口：https://modrinth.com/project/PEStmtp4
 
 ## 打包（下载后一键构建）
 

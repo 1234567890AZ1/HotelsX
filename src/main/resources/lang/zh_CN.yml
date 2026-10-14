@@ -411,6 +411,7 @@ gui:
     help_name: "&f&l帮助说明"
     help_lore1: "&7查看酒店系统使用指南"
     help_lore2: "&7命令列表与玩法说明"
+    qq_line: "&7加入 QQ 群：&b{qq}"
     ranking_name: "&f&l房间排行榜"
     ranking_lore1: "&7查看最大的房间排名"
     ranking_lore2: "&7榜单长度 &fTOP 10"

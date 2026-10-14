@@ -126,11 +126,18 @@ public class MainMenuGUI {
                 RULE,
                 plugin.getLang().get("gui.main_menu.click_enter")));
 
+        // 帮助说明：QQ 群一行取自 config.yml 的 community.qq-group，留空则不显示
+        List<String> helpLore = new ArrayList<>();
+        helpLore.add(plugin.getLang().get("gui.main_menu.help_lore1"));
+        helpLore.add(plugin.getLang().get("gui.main_menu.help_lore2"));
+        String qqGroup = plugin.getConfig().getString("community.qq-group", "");
+        if (qqGroup != null && !qqGroup.trim().isEmpty()) {
+            helpLore.add(plugin.getLang().get("gui.main_menu.qq_line", "qq", qqGroup.trim()));
+        }
+        helpLore.add(RULE);
+        helpLore.add(plugin.getLang().get("gui.main_menu.click_view"));
         inv.setItem(31, createItem(Material.BOOK, plugin.getLang().get("gui.main_menu.help_name"),
-                plugin.getLang().get("gui.main_menu.help_lore1"),
-                plugin.getLang().get("gui.main_menu.help_lore2"),
-                RULE,
-                plugin.getLang().get("gui.main_menu.click_view")));
+                helpLore.toArray(new String[0])));
 
         inv.setItem(33, createItem(Material.GOLD_BLOCK, plugin.getLang().get("gui.main_menu.ranking_name"),
                 plugin.getLang().get("gui.main_menu.ranking_lore1"),

@@ -8,7 +8,7 @@
 
 ## 把任意一块区域变成酒店房间
 
-HotelsX 让玩家用木斧圈出一块地，把它变成可以收费入住的房间。
+HotelsX（别名 StayX）让玩家用木斧圈出一块地，把它变成可以收费入住的房间。
 房主定价、上锁或设密码，其他玩家付费入住。
 
 房主赚取收入，住客得到落脚处。日常使用完全不需要改配置文件，所有操作都在游戏内的 GUI 里完成。
@@ -97,7 +97,7 @@ MIT
 
 ## Turn any region into a hotel
 
-HotelsX lets players claim an area with a wooden axe and turn it into a rentable room.
+HotelsX (aka StayX) lets players claim an area with a wooden axe and turn it into a rentable room.
 Set a price, add a lock or a password, and let other players pay to check in.
 
 Room owners earn money. Guests get a place to stay. Day-to-day use needs no config
