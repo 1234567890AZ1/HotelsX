@@ -70,7 +70,9 @@ public class GUIListener implements Listener {
             handleTagFilterClick(player, event);
         } else if (guiName.equals(RoomManageGUI.GUI_NAME)) {
             handleRoomManageClick(player, event, holder);
-        } else if (guiName.equals("ranking")) {
+        } else if (guiName.equals(RoomStatsGUI.GUI_NAME)) {
+            handleRoomStatsClick(player, event, holder);
+        } else if (guiName.equals(RankingGUI.GUI_NAME)) {
             handleRankingClick(player, event);
         } else if (guiName.equals(TagSelectGUI.GUI_NAME)) {
             handleTagSelectClick(player, event, holder);
@@ -122,11 +124,25 @@ public class GUIListener implements Listener {
 
     private void handleRankingClick(Player player, InventoryClickEvent event) {
         int slot = event.getSlot();
-        int size = event.getInventory().getSize();
-
-        if (slot == size - 1) {
-            plugin.log(player, "从排行榜返回主菜单");
-            MainMenuGUI.open(player);
+        switch (slot) {
+            case 0:
+                plugin.log(player, "切换收益榜");
+                RankingGUI.open(player, RankingGUI.TAB_REVENUE);
+                break;
+            case 1:
+                plugin.log(player, "切换好评榜");
+                RankingGUI.open(player, RankingGUI.TAB_RATING);
+                break;
+            case 2:
+                plugin.log(player, "切换入住率榜");
+                RankingGUI.open(player, RankingGUI.TAB_OCCUPANCY);
+                break;
+            case 49:
+                plugin.log(player, "从排行榜返回主菜单");
+                MainMenuGUI.open(player);
+                break;
+            default:
+                break;
         }
     }
 
@@ -618,6 +634,42 @@ public class GUIListener implements Listener {
                 plugin.log(player, "传送到房间: " + targetRoom.getName());
                 plugin.getLang().send(player, "listener.gui.teleported_to_room");
                 break;
+            case 17:
+                // 时段自动定价：跟随全局 → 开启 → 关闭 → 跟随全局
+                if (targetRoom.getAutoPricingMode() == -1) {
+                    targetRoom.setAutoPricingMode(1);
+                } else if (targetRoom.getAutoPricingMode() == 1) {
+                    targetRoom.setAutoPricingMode(0);
+                } else {
+                    targetRoom.setAutoPricingMode(-1);
+                }
+                plugin.getRoomStorage().saveRoom(targetRoom);
+                plugin.log(player, "切换房间自动定价: " + targetRoom.getName() + " = " + targetRoom.getAutoPricingMode());
+                plugin.getLang().send(player, "listener.gui.auto_pricing_updated");
+                RoomManageGUI.open(player, targetRoom, plugin);
+                break;
+            case 18:
+                player.closeInventory();
+                plugin.log(player, "准备设置房间押金: " + targetRoom.getName());
+                plugin.getLang().send(player, "listener.gui.enter_deposit");
+                plugin.getChatInputHandler().expectInput(player, "setdeposit:" + targetRoom.getId());
+                break;
+            case 19:
+                player.closeInventory();
+                plugin.log(player, "准备设置提前退房退款比例: " + targetRoom.getName());
+                plugin.getLang().send(player, "listener.gui.enter_early_refund");
+                plugin.getChatInputHandler().expectInput(player, "setearlyrefund:" + targetRoom.getId());
+                break;
+            case 20:
+                player.closeInventory();
+                plugin.log(player, "准备设置预订折扣: " + targetRoom.getName());
+                plugin.getLang().send(player, "listener.gui.enter_booking_discount");
+                plugin.getChatInputHandler().expectInput(player, "setbookingdiscount:" + targetRoom.getId());
+                break;
+            case 16:
+                plugin.log(player, "打开房间经营数据: " + targetRoom.getName());
+                RoomStatsGUI.open(player, targetRoom, plugin);
+                break;
             case 23:
                 if (targetRoom.isOccupied()) {
                     Player guest = plugin.getServer().getPlayer(targetRoom.getCurrentGuest());
@@ -639,6 +691,16 @@ public class GUIListener implements Listener {
                 plugin.log(player, "从房间管理返回我的房间");
                 MyRoomsGUI.open(player, plugin);
                 break;
+        }
+    }
+
+    private void handleRoomStatsClick(Player player, InventoryClickEvent event, GUIHolder holder) {
+        if (event.getSlot() == 26) {
+            HotelRoom room = holder.getData(HotelRoom.class);
+            if (room != null) {
+                plugin.log(player, "从经营数据返回房间管理: " + room.getName());
+                RoomManageGUI.open(player, room, plugin);
+            }
         }
     }
 

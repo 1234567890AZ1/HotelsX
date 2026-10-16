@@ -41,6 +41,46 @@ economy:
   # 关闭则入住时收益实时到账到房主钱包（默认）
   escrow-mode: false
 
+# 时段自动定价（高峰上浮 / 空置打折）
+# 房主可在房间管理界面按房间开关自动定价，全局开关在此
+auto-pricing:
+  # 是否启用自动定价
+  enabled: true
+  # 高峰时段（24 小时制，含起始不含结束），例如 18 表示 18:00-23:00
+  peak-start: 18
+  peak-end: 23
+  # 高峰时段价格上浮倍数（1.2 = 上浮 20%）
+  peak-multiplier: 1.2
+  # 周末（周六/周日）价格上浮倍数（1.0 = 不上浮）
+  weekend-multiplier: 1.2
+  # 房间连续空闲超过 N 天自动打折（0 = 关闭空置打折）
+  idle-days: 7
+  # 空置折扣比例（0.8 = 八折）
+  idle-discount: 0.8
+  # 每次自动定价的有效时长（分钟），到期由任务自动刷新
+  duration-minutes: 120
+
+# 押金与损坏赔偿
+deposit:
+  # 默认押金金额（0 = 默认关闭，房主可在房间管理界面为单个房间设置）
+  default-amount: 0.0
+  # 房间体积超过该值时跳过押金损坏检测（避免大范围方块快照开销）
+  max-volume: 20000
+
+# 退房策略
+checkout:
+  # 全局默认提前退房退款比例（0-100），房主可按房间覆盖
+  early-refund-percent: 0
+
+# 预订系统
+booking:
+  # 是否启用预订功能
+  enabled: true
+  # 最多可提前预订的天数上限
+  max-advance-days: 7
+  # 客人预订到点后未到场，保留多少分钟后自动取消并退款
+  no-show-minutes: 15
+
 # 店面系统配置（Web 面板商店系统，无游戏内交互）
 shop:
   # 是否启用店面系统

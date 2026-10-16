@@ -190,61 +190,7 @@ public class MainMenuGUI {
     public static void openRanking(Player player) {
         HotelsPlugin plugin = HotelsPlugin.getInstance();
         if (plugin == null) return;
-
-        List<HotelRoom> allRooms = new ArrayList<>(plugin.getRoomStorage().getAllRooms());
-        allRooms.sort((a, b) -> Long.compare(b.getVolume(), a.getVolume()));
-
-        List<HotelRoom> top = allRooms.stream().limit(10).collect(Collectors.toList());
-
-        int size = Math.min(54, Math.max(9, ((top.size() / 9) + 2) * 9));
-        Inventory inv = Bukkit.createInventory(new GUIHolder("ranking"), size, plugin.getLang().get("gui.ranking.title"));
-
-        ItemStack border = createItem(Material.BLACK_STAINED_GLASS_PANE, "§8 ");
-        for (int i = 0; i < 9; i++) {
-            inv.setItem(i, border);
-        }
-
-        int slot = 9;
-        int rank = 1;
-        for (HotelRoom room : top) {
-            Material icon;
-            String rankColor;
-            if (rank == 1) {
-                icon = Material.GOLD_BLOCK;
-                rankColor = "§6";
-            } else if (rank == 2) {
-                icon = Material.IRON_BLOCK;
-                rankColor = "§7";
-            } else if (rank == 3) {
-                icon = Material.COPPER_BLOCK;
-                rankColor = "§c";
-            } else {
-                icon = Material.STONE;
-                rankColor = "§8";
-            }
-
-            ItemStack item = new ItemStack(icon);
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
-                meta.setDisplayName(rankColor + "§l#" + rank + " §f" + room.getName());
-                meta.setLore(Arrays.asList(
-                        plugin.getLang().get("gui.common.owner", "owner", room.getOwnerName()),
-                        plugin.getLang().get("gui.ranking.size", "volume", room.getVolume()),
-                        plugin.getLang().get("gui.common.status", "status", getStatusDisplay(room.getStatus())),
-                        plugin.getLang().get("gui.common.world", "world", room.getWorldName())
-                ));
-                item.setItemMeta(meta);
-            }
-
-            inv.setItem(slot++, item);
-            rank++;
-        }
-
-        inv.setItem(size - 1, createItem(Material.ARROW,
-                plugin.getLang().get("gui.common.back_gold"),
-                plugin.getLang().get("gui.common.back_to_main_lore")));
-
-        player.openInventory(inv);
+        RankingGUI.open(player, RankingGUI.TAB_REVENUE);
     }
 
     private static String getStatusDisplay(HotelRoom.RoomStatus status) {

@@ -77,20 +77,25 @@ public class CheckinHandler {
             return;
         }
 
+        // 本次入住时长（分钟），0 表示不限时；用于流水统计与到期检测
+        int stayDuration = plugin.resolveStayDuration(room);
+
         // 检查经济
         EconomyManager economy = plugin.getEconomyManager();
+        double depositAmount = plugin.getDepositService().resolveAmount(room);
         if (economy.isEnabled()) {
             double currentPrice = room.getCurrentPrice();
+            double total = currentPrice + depositAmount;
             double balance = economy.getBalance(player);
-            if (balance < currentPrice) {
+            if (balance < total) {
                 plugin.getLang().send(player, "checkin.insufficient_funds",
-                        "need", plugin.getEconomyManager().format(currentPrice),
+                        "need", plugin.getEconomyManager().format(total),
                         "bal", plugin.getEconomyManager().format(balance));
                 return;
             }
 
-            // 扣款
-            if (!economy.withdraw(player, currentPrice)) {
+            // 扣款（房费 + 押金）
+            if (!economy.withdraw(player, total)) {
                 plugin.getLang().send(player, "checkin.withdraw_failed");
                 return;
             }
@@ -99,7 +104,18 @@ public class CheckinHandler {
             recordTransaction(Transaction.TxType.CHECKIN_PAY,
                     player.getUniqueId().toString(), player.getName(),
                     currentPrice, room.getId(), room.getName(),
-                    "入住付款: " + room.getName());
+                    "入住付款: " + room.getName(), stayDuration);
+
+            // 押金：记录流水并做房间快照，退房时结算
+            if (depositAmount > 0) {
+                recordTransaction(Transaction.TxType.DEPOSIT_PAY,
+                        player.getUniqueId().toString(), player.getName(),
+                        depositAmount, room.getId(), room.getName(),
+                        "押金扣押: " + room.getName());
+                plugin.getDepositService().hold(room, depositAmount);
+                plugin.getLang().send(player, "checkin.deposit_held",
+                        "amount", economy.format(depositAmount));
+            }
 
             // 给房主付款（支持托管模式：收益进入待提现余额）
             OfflinePlayer ownerPlayer = Bukkit.getOfflinePlayer(room.getOwner());
@@ -112,7 +128,7 @@ public class CheckinHandler {
                 recordTransaction(Transaction.TxType.CHECKIN_RECV,
                         room.getOwner().toString(), room.getOwnerName(),
                         currentPrice, room.getId(), room.getName(),
-                        "收租(待提现): 客人 " + player.getName() + " 入住 " + room.getName());
+                        "收租(待提现): 客人 " + player.getName() + " 入住 " + room.getName(), stayDuration);
             } else {
                 // 实时到账模式
                 economy.deposit(ownerPlayer, currentPrice);
@@ -121,7 +137,7 @@ public class CheckinHandler {
                 recordTransaction(Transaction.TxType.CHECKIN_RECV,
                         room.getOwner().toString(), room.getOwnerName(),
                         currentPrice, room.getId(), room.getName(),
-                        "收租: 客人 " + player.getName() + " 入住 " + room.getName());
+                        "收租: 客人 " + player.getName() + " 入住 " + room.getName(), stayDuration);
             }
 
             plugin.log(player, "经济交易: 支付 " + currentPrice + " 给房主 " + room.getOwnerName());
@@ -132,6 +148,7 @@ public class CheckinHandler {
         room.setCurrentGuestName(player.getName());
         room.setStatus(HotelRoom.RoomStatus.OCCUPIED);
         room.setCheckinTime(System.currentTimeMillis());
+        room.setCurrentStayMinutes(stayDuration);
         plugin.getRoomStorage().saveRoom(room);
 
         // 传送玩家到房间
@@ -149,18 +166,8 @@ public class CheckinHandler {
         // 欢迎效果（标题 / ActionBar / 音效，可在 config.yml 关闭）
         sendWelcomeEffects(player, room);
 
-        // 检查时长限制
-        int duration = room.getDurationMinutes();
-        if (duration == -1) {
-            // 尝试从合集获取时长
-            for (com.hotels.model.RoomCollection col : plugin.getRoomStorage().getAllCollections()) {
-                if (col.getRoomIds().contains(room.getId())) {
-                    duration = col.getDurationMinutes();
-                    break;
-                }
-            }
-            if (duration == -1) duration = 0;
-        }
+        // 检查时长限制（使用本次入住固定下来的时长）
+        int duration = stayDuration;
 
         if (duration > 0) {
             long durationMs = duration * 60 * 1000L;
@@ -278,14 +285,32 @@ public class CheckinHandler {
      * 执行退房操作
      */
     private void doCheckout(Player player, HotelRoom room) {
+        // 提前退房退款策略：仅在未到期时按房间/全局比例退还部分房费
+        long checkinTime = room.getCheckinTime();
+        int duration = plugin.resolveStayDuration(room);
+        double refund = 0;
+        if (duration > 0 && checkinTime > 0) {
+            long expireTime = checkinTime + duration * 60 * 1000L;
+            if (System.currentTimeMillis() < expireTime) {
+                refund = computeEarlyRefund(player, room);
+            }
+        }
+
+        // 押金结算：对比入住快照，房间被改动则押金赔付房主，否则全额退还
+        plugin.getDepositService().settle(player.getUniqueId(), player.getName(), room);
+
         room.setCurrentGuest(null);
         room.setCurrentGuestName(null);
         room.setStatus(HotelRoom.RoomStatus.AVAILABLE);
         room.setCheckinTime(0);
+        room.setCurrentStayMinutes(-1);
         plugin.getRoomStorage().saveRoom(room);
 
         plugin.log(player, "成功退房: " + room.getName() + " (ID: " + room.getId() + ")");
         plugin.getLang().send(player, "checkin.checkout_success", "room", room.getName());
+        if (refund > 0) {
+            plugin.getLang().send(player, "checkin.early_refund", "amount", plugin.getEconomyManager().format(refund));
+        }
         plugin.getLang().send(player, "checkin.rate_hint", "id", room.getId());
 
         Player owner = Bukkit.getPlayer(room.getOwner());
@@ -293,6 +318,60 @@ public class CheckinHandler {
             owner.sendMessage(plugin.getLang().get("checkin.notify_owner_checkout",
                     "player", player.getName(), "room", room.getName()));
         }
+    }
+
+    /**
+     * 计算并发放提前退房退款：按房间（或全局）退款比例退还本次入住已付房费的一部分。
+     * 退款金额从房主收益中扣回（实时到账扣钱包，托管模式扣待提现余额）。
+     *
+     * @return 实际退还给客人的金额
+     */
+    private double computeEarlyRefund(Player player, HotelRoom room) {
+        int percent = room.getEarlyRefundPercent();
+        if (percent < 0) {
+            percent = plugin.getConfig().getInt("checkout.early-refund-percent", 0);
+        }
+        if (percent <= 0) return 0;
+
+        EconomyManager economy = plugin.getEconomyManager();
+        if (!economy.isEnabled()) return 0;
+
+        // 查找本次入住该客人的付款金额
+        double paid = 0;
+        for (Transaction tx : plugin.getTransactionStorage().getByRoom(room.getId())) {
+            if (tx.getType() == Transaction.TxType.CHECKIN_PAY
+                    && player.getUniqueId().toString().equals(tx.getPlayerUUID())) {
+                paid = tx.getAmount();
+                break; // getByRoom 从新到旧，取最近一次
+            }
+        }
+        if (paid <= 0) return 0;
+
+        double refund = Math.round(paid * percent / 100.0 * 100.0) / 100.0;
+        if (refund <= 0) return 0;
+
+        // 从房主侧扣回（金额不足时按可扣额度封顶）
+        boolean escrowMode = plugin.getConfig().getBoolean("economy.escrow-mode", false);
+        if (escrowMode) {
+            double taken = plugin.getEscrowStorage().reverse(room.getOwner().toString(), refund);
+            refund = taken;
+        } else {
+            OfflinePlayer ownerPlayer = Bukkit.getOfflinePlayer(room.getOwner());
+            double balance = economy.getBalance(ownerPlayer);
+            refund = Math.min(refund, balance);
+            if (refund > 0 && !economy.withdraw(ownerPlayer, refund)) {
+                refund = 0;
+            }
+        }
+        if (refund <= 0) return 0;
+
+        economy.deposit(player, refund);
+        recordTransaction(Transaction.TxType.EARLY_REFUND,
+                player.getUniqueId().toString(), player.getName(),
+                refund, room.getId(), room.getName(),
+                "提前退房退款(" + percent + "%): " + room.getName());
+        plugin.log(player, "提前退房退款: 退还 " + refund + " 给 " + player.getName());
+        return refund;
     }
 
     /**
@@ -317,10 +396,13 @@ public class CheckinHandler {
         for (HotelRoom room : plugin.getRoomStorage().getAllRooms()) {
             if (room.getCurrentGuest() != null && room.getCurrentGuest().equals(guestUUID)) {
                 String guestName = room.getCurrentGuestName();
+                // 押金结算（到期自动退房同样检测房间是否被改动）
+                plugin.getDepositService().settle(guestUUID, guestName, room);
                 room.setCurrentGuest(null);
                 room.setCurrentGuestName(null);
                 room.setStatus(HotelRoom.RoomStatus.AVAILABLE);
                 room.setCheckinTime(0);
+                room.setCurrentStayMinutes(-1);
                 plugin.getRoomStorage().saveRoom(room);
 
                 plugin.log(null, "自动退房: " + guestName + " 从房间 " + room.getName() + " (ID: " + room.getId() + ")");
@@ -342,6 +424,18 @@ public class CheckinHandler {
                                    double amount,
                                    String roomId, String roomName,
                                    String remark) {
+        recordTransaction(type, playerUUID, playerName, amount, roomId, roomName, remark, 0);
+    }
+
+    /**
+     * 记录经济流水（带入住时长，用于入住率统计）
+     */
+    private void recordTransaction(Transaction.TxType type,
+                                   String playerUUID, String playerName,
+                                   double amount,
+                                   String roomId, String roomName,
+                                   String remark,
+                                   int stayMinutes) {
         try {
             Transaction tx = new Transaction();
             tx.setType(type);
@@ -351,6 +445,7 @@ public class CheckinHandler {
             tx.setRoomId(roomId);
             tx.setRoomName(roomName);
             tx.setRemark(remark);
+            tx.setStayMinutes(stayMinutes);
             plugin.getTransactionStorage().add(tx);
         } catch (Exception e) {
             plugin.getLogger().warning("记录交易流水失败: " + e.getMessage());

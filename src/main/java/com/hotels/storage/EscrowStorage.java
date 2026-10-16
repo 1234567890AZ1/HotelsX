@@ -262,4 +262,26 @@ public class EscrowStorage {
     public int pendingCount() {
         return pendingBalances.size();
     }
+
+    /**
+     * 从待提现余额中扣回金额（用于退款 / 赔偿冲正），返回实际扣回的金额
+     */
+    public double reverse(String uuid, double amount) {
+        if (uuid == null || amount <= 0) return 0;
+        writeLock.lock();
+        try {
+            Double pending = pendingBalances.get(uuid);
+            if (pending == null || pending <= 0) return 0;
+            double taken = Math.min(pending, amount);
+            pendingBalances.put(uuid, pending - taken);
+            if (pendingBalances.get(uuid) <= 0.001) {
+                pendingBalances.remove(uuid);
+                balanceNames.remove(uuid);
+            }
+            saveAll();
+            return taken;
+        } finally {
+            writeLock.unlock();
+        }
+    }
 }

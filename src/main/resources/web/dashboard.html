@@ -31,6 +31,7 @@ h1{font-size:30px;line-height:1.25;letter-spacing:-.02em;}h2{font-size:20px;line
 <a href="#report"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-6 14H7v-2h6v2zm3-4H7v-2h9v2zm0-4H7V7h9v2z"/></svg>运营报表</a>
 <a href="#server"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM8 20H4v-4h4v4zm0-6H4v-4h4v4zm0-6H4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4z"/></svg>服务器状态</a>
 <div class="st">管理</div>
+<a href="#owner"><svg viewBox="0 0 24 24"><path d="M12 3l4 4h-3v6h-2V7H8l4-4zM4 13v8h16v-8h-5v3H9v-3H4z"/></svg>我的酒店</a>
 <a href="#rooms"><svg viewBox="0 0 24 24"><path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2V9c0-2.21-1.79-4-4-4z"/></svg>房间列表</a>
 <a href="#collections"><svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>合集列表</a>
 <a href="#transactions"><svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>经济流水</a>
@@ -99,6 +100,13 @@ h1{font-size:30px;line-height:1.25;letter-spacing:-.02em;}h2{font-size:20px;line
 <tr><th>运行时间</th><td><!--HX_UPTIME2--></td></tr>
 <tr><th>已加载插件数</th><td><!--HX_PLUGINS--></td></tr>
 </table></div></div>
+
+<div id="owner" class="page-section">
+<div class="section">
+<div class="section-title">我的酒店
+<div><button class="btn btn-secondary btn-sm" onclick="loadOwner()">刷新</button></div></div>
+<div id="ownerContent" style="text-align:center;color:var(--c-text-faint);padding:40px;">加载中...</div>
+</div></div>
 
 <div id="rooms" class="page-section">
 <div class="section">
@@ -617,6 +625,57 @@ async function withdrawEscrow(uuid,name){
     if(j.success){toast(j.message,'success');loadEscrow();}
     else{toast(j.message||'提现失败','error');}}
     catch(e){toast('网络错误: '+e.message,'error');}}
+// ===== 我的酒店（房主经营数据 + 调价） =====
+async function loadOwner(){
+    const el=document.getElementById('ownerContent');if(!el)return;
+    try{
+    const r=await fetch('/api/owner/stats');
+    if(!r.ok){el.innerHTML='<div style="padding:30px;">加载失败 ('+r.status+')</div>';return;}
+    const j=await r.json();
+    if(!j.linked){el.innerHTML='<div style="padding:30px;">当前账户未关联游戏ID，无法查看名下酒店。<br>请在「管理员」页面为该账户填写「关联游戏ID」。</div>';return;}
+    const rooms=j.rooms||[];
+    if(rooms.length===0){el.innerHTML='<div style="padding:30px;">你名下暂无酒店房间。<br>在游戏中用 <b>/ht create &lt;房间名称&gt;</b> 创建房间后再回来查看。</div>';return;}
+    const statusMap={AVAILABLE:['可入住','status-available'],OCCUPIED:['已入住','status-occupied'],MAINTENANCE:['维护中','status-maintenance']};
+    const dayNames=['6天前','5天前','4天前','3天前','前天','昨天','今天'];
+    let html='';
+    rooms.forEach(rm=>{
+    const occ=Math.round((rm.occupancyRate||0)*100);
+    const st=statusMap[rm.status]||['未知',''];
+    const tag="<span class='status-tag "+st[1]+"'>"+st[0]+"</span>";
+    let guests='';
+    (rm.topGuests||[]).forEach(g=>{guests+=escapeHtml(g.name)+' <span style="color:var(--c-text-faint);">('+g.count+')</span>&nbsp;&nbsp;';});
+    if(!guests)guests='<span style="color:var(--c-text-faint);">暂无</span>';
+    const arr=rm.last7Days||[0,0,0,0,0,0,0];
+    const maxV=Math.max(1,...arr);
+    let bars='';
+    arr.forEach((v,i)=>{bars+='<span title="'+dayNames[i]+': '+v+' 次" style="display:inline-block;width:18px;height:'+Math.max(2,Math.round(v/maxV*40))+'px;background:var(--c-amber-strong);border-radius:2px;margin-right:4px;vertical-align:bottom;"></span>';});
+    html+='<div class="section" style="margin-bottom:16px;">';
+    html+='<div class="section-title">'+escapeHtml(rm.name||rm.id)+' '+tag+' <span class="badge">'+escapeHtml(rm.id)+'</span></div>';
+    html+='<div class="stats" style="text-align:left;margin-bottom:8px;">';
+    html+='<div class="card green"><div class="label">累计收益</div><div class="value">'+Number(rm.revenue).toFixed(2)+'</div></div>';
+    html+='<div class="card blue"><div class="label">累计入住</div><div class="value">'+rm.checkinCount+'</div></div>';
+    html+='<div class="card orange"><div class="label">平均评分</div><div class="value">'+(rm.ratingCount>0?Number(rm.avgRating).toFixed(1):'—')+'</div><div class="sub">'+rm.ratingCount+' 条评分</div></div>';
+    html+='<div class="card purple"><div class="label">近30天入住率</div><div class="value">'+occ+'%</div><div class="progress-bar"><div class="progress-fill" style="width:'+occ+'%"></div></div></div>';
+    html+='</div>';
+    html+='<div class="sub-title">近 7 天入住趋势</div><div style="padding:6px 0 14px;">'+bars+'</div>';
+    html+='<div class="sub-title">客源 TOP3</div><div style="padding:6px 0 14px;">'+guests+'</div>';
+    html+='<div class="inline-form" style="text-align:left;"><div style="flex:1;"><label for="op_'+escapeHtml(rm.id)+'">基础价格（当前: '+Number(rm.currentPrice).toFixed(2)+'）</label>';
+    html+='<input type="number" step="0.01" id="op_'+escapeHtml(rm.id)+'" value="'+Number(rm.price).toFixed(2)+'">';
+    html+='</div><div style="flex:0 0 auto;"><button class="btn btn-primary" onclick="saveOwnerPrice(\''+escapeHtml(rm.id)+'\')">保存调价</button></div></div>';
+    html+='</div>';
+    });
+    el.innerHTML=html;
+    }catch(e){el.innerHTML='<div style="padding:30px;">加载失败: '+e.message+'</div>';}
+}
+async function saveOwnerPrice(id){
+    const inp=document.getElementById('op_'+id);const v=inp?inp.value:'';
+    if(v===''||isNaN(+v)||+v<0){toast('请输入正确的价格','error');return;}
+    try{const r=await fetch('/api/owner/price',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({roomId:id,price:v})});
+    const j=await r.json();
+    if(j.success){toast(j.message||'价格已更新','success');loadOwner();}
+    else toast(j.error||'更新失败','error');}
+    catch(e){toast('网络错误','error');}
+}
 async function loadReport(){
 try{const r=await fetch('/api/stats/report');const j=await r.json();
 const el=document.getElementById('reportContent');if(!el)return;
@@ -651,7 +710,7 @@ html+='</div>';
 html+='</div>';
 el.innerHTML=html;}catch(e){const el=document.getElementById('reportContent');if(el)el.textContent='加载失败';}}
 renderRoomPage();
-loadCharts();loadReport();loadTransactions();loadRatings();loadEscrow();
+loadCharts();loadReport();loadTransactions();loadRatings();loadEscrow();loadOwner();
 highlightNav();
 /* ===== 店铺管理 ===== */
 function toggleStockInput(){var m=document.getElementById('scMode').value;document.getElementById('stockWrap').style.display=m==='FIXED'?'':'none';}

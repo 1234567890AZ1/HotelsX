@@ -203,6 +203,9 @@ public class WebServer {
         server.createContext("/api/ratings", new RatingsHandler());
         server.createContext("/api/escrow", new EscrowHandler());
         server.createContext("/api/escrow/withdraw", new EscrowWithdrawHandler());
+        // 房主经营数据与调价（「我的酒店」页）
+        server.createContext("/api/owner/stats", new OwnerStatsHandler());
+        server.createContext("/api/owner/price", new OwnerPriceHandler());
         // 店铺系统 API
         server.createContext("/api/shops", new ShopsHandler());
         server.createContext("/api/shops/containers", new ShopContainersHandler());
@@ -1065,6 +1068,91 @@ public class WebServer {
             plugin.getRoomStorage().saveAll();
             Map<String, Object> r = new HashMap<>();
             r.put("success", true); r.put("message", "房间已更新");
+            WebHttp.sendJson(exchange, 200, WebHttp.toJson(r));
+        }
+    }
+
+    /**
+     * 「我的酒店」经营数据：返回当前登录用户关联游戏ID名下所有房间的经营指标。
+     */
+    private class OwnerStatsHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!requireAuth(exchange)) return;
+            Session session = getSession(exchange);
+            if (session == null) return;
+
+            String ownerName = session.minecraftName;
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("owner", ownerName != null ? ownerName : "");
+            resp.put("linked", ownerName != null && !ownerName.isEmpty());
+
+            List<Map<String, Object>> rooms = new ArrayList<>();
+            if (ownerName != null && !ownerName.isEmpty()) {
+                com.hotels.analytics.RoomAnalytics analytics = new com.hotels.analytics.RoomAnalytics(plugin);
+                for (HotelRoom r : plugin.getRoomStorage().getAllRooms()) {
+                    if (r.getOwnerName() == null || !r.getOwnerName().equalsIgnoreCase(ownerName)) continue;
+                    com.hotels.analytics.RoomAnalytics.RoomStats s = analytics.compute(r.getId());
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", r.getId());
+                    m.put("name", r.getName() != null ? r.getName() : "");
+                    m.put("status", r.getStatus().name());
+                    m.put("locked", r.isLocked());
+                    m.put("price", r.getPrice());
+                    m.put("currentPrice", r.getCurrentPrice());
+                    m.put("guest", r.getCurrentGuestName() != null ? r.getCurrentGuestName() : "");
+                    m.put("revenue", Math.round(s.revenue * 100) / 100.0);
+                    m.put("checkinCount", s.checkinCount);
+                    m.put("avgRating", s.avgRating);
+                    m.put("ratingCount", s.ratingCount);
+                    m.put("occupancyRate", Math.round(s.occupancyRate * 1000) / 1000.0);
+                    m.put("last7Days", s.last7Days);
+                    List<Map<String, Object>> guests = new ArrayList<>();
+                    for (Map.Entry<String, Integer> e : s.topGuests.entrySet()) {
+                        Map<String, Object> g = new LinkedHashMap<>();
+                        g.put("name", e.getKey());
+                        g.put("count", e.getValue());
+                        guests.add(g);
+                    }
+                    m.put("topGuests", guests);
+                    rooms.add(m);
+                }
+            }
+            resp.put("rooms", rooms);
+            WebHttp.sendJson(exchange, 200, WebHttp.toJson(resp));
+        }
+    }
+
+    /**
+     * 「我的酒店」房主调价：仅可修改自己名下房间的基础价格。
+     */
+    private class OwnerPriceHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!requireAuth(exchange)) return;
+            Session session = getSession(exchange);
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
+            }
+            Map<String, String> form = WebHttp.parseForm(WebHttp.readBody(exchange));
+            String roomId = form.getOrDefault("roomId", "");
+            HotelRoom room = plugin.getRoomStorage().getRoom(roomId);
+            if (room == null) { WebHttp.sendJson(exchange, 404, "{\"error\":\"房间不存在\"}"); return; }
+            if (!canManageRoom(session, room)) { WebHttp.sendJson(exchange, 403, "{\"error\":\"无权操作此房间\"}"); return; }
+            if (!requireCsrf(exchange)) return;
+            double price;
+            try {
+                price = Double.parseDouble(form.getOrDefault("price", ""));
+            } catch (NumberFormatException e) {
+                WebHttp.sendJson(exchange, 400, "{\"error\":\"价格格式不正确\"}"); return;
+            }
+            if (price < 0 || price > 1_000_000) { WebHttp.sendJson(exchange, 400, "{\"error\":\"价格超出允许范围\"}"); return; }
+            room.setPrice(price);
+            plugin.getRoomStorage().saveRoom(room);
+            plugin.getRoomStorage().saveAll();
+            Map<String, Object> r = new LinkedHashMap<>();
+            r.put("success", true);
+            r.put("message", "价格已更新");
             WebHttp.sendJson(exchange, 200, WebHttp.toJson(r));
         }
     }

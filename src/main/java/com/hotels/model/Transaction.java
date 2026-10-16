@@ -34,10 +34,16 @@ import java.util.UUID;
 public class Transaction {
 
     public enum TxType {
-        CHECKIN_PAY,    // 客人入住付款（扣客人）
-        CHECKIN_RECV,   // 房主收到租金（加房主）
-        EXTEND_PAY,     // 客人续费延长入住（扣客人）
-        REFUND          // 退款（暂未使用）
+        CHECKIN_PAY,        // 客人入住付款（扣客人）
+        CHECKIN_RECV,       // 房主收到租金（加房主）
+        EXTEND_PAY,         // 客人续费延长入住（扣客人）
+        REFUND,             // 退款
+        BOOKING_PAY,        // 预订付款（扣客人）
+        BOOKING_REFUND,     // 预订退款（退客人）
+        DEPOSIT_PAY,        // 押金扣押（扣客人）
+        DEPOSIT_REFUND,     // 押金退还（退客人）
+        DEPOSIT_FORFEIT,    // 押金赔付给房主（加房主）
+        EARLY_REFUND        // 提前退房退款（退客人）
     }
 
     private String id;
@@ -49,6 +55,7 @@ public class Transaction {
     private String roomId;      // 关联房间ID
     private String roomName;    // 房间名（快照）
     private String remark;      // 备注
+    private int stayMinutes;    // 本次流水对应的入住时长（分钟），用于入住率统计
 
     public Transaction() {
         this.id = UUID.randomUUID().toString().substring(0, 12);
@@ -82,6 +89,9 @@ public class Transaction {
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
 
+    public int getStayMinutes() { return stayMinutes; }
+    public void setStayMinutes(int stayMinutes) { this.stayMinutes = stayMinutes; }
+
     public Map<String, Object> serialize() {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", id);
@@ -93,6 +103,7 @@ public class Transaction {
         map.put("roomId", roomId);
         map.put("roomName", roomName);
         map.put("remark", remark);
+        map.put("stayMinutes", stayMinutes);
         return map;
     }
 
@@ -107,6 +118,7 @@ public class Transaction {
         tx.roomId = (String) map.get("roomId");
         tx.roomName = (String) map.get("roomName");
         tx.remark = (String) map.get("remark");
+        tx.stayMinutes = map.get("stayMinutes") != null ? ((Number) map.get("stayMinutes")).intValue() : 0;
         return tx;
     }
 }

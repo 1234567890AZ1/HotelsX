@@ -68,6 +68,54 @@ public class RoomManageGUI {
                 plugin.getLang().get("gui.room_manage.status_line", "status", getStatusDisplay(room.getStatus())),
                 plugin.getLang().get("gui.room_manage.status_hint")));
 
+        inv.setItem(16, createItem(Material.KNOWLEDGE_BOOK, plugin.getLang().get("gui.room_manage.stats_name"),
+                plugin.getLang().get("gui.room_manage.stats_lore1"),
+                plugin.getLang().get("gui.room_manage.stats_lore2")));
+
+        // 时段自动定价开关
+        String autoValue = room.getAutoPricingMode() == 1
+                ? plugin.getLang().get("gui.room_manage.auto_pricing_value_on")
+                : room.getAutoPricingMode() == 0
+                ? plugin.getLang().get("gui.room_manage.auto_pricing_value_off")
+                : plugin.getLang().get("gui.room_manage.auto_pricing_value_global");
+        inv.setItem(17, createItem(Material.COMPARATOR, plugin.getLang().get("gui.room_manage.auto_pricing_name"),
+                plugin.getLang().get("gui.room_manage.auto_pricing_line", "value", autoValue),
+                plugin.getLang().get("gui.room_manage.auto_pricing_hint")));
+
+        // 押金设置
+        if (room.hasDeposit()) {
+            inv.setItem(18, createItem(Material.IRON_BLOCK, plugin.getLang().get("gui.room_manage.deposit_name"),
+                    plugin.getLang().get("gui.room_manage.deposit_line",
+                            "amount", plugin.getEconomyManager().format(room.getDeposit())),
+                    plugin.getLang().get("gui.room_manage.deposit_hint")));
+        } else {
+            inv.setItem(18, createItem(Material.IRON_BLOCK, plugin.getLang().get("gui.room_manage.deposit_name"),
+                    plugin.getLang().get("gui.room_manage.deposit_line_off"),
+                    plugin.getLang().get("gui.room_manage.deposit_hint")));
+        }
+
+        // 提前退房退款比例
+        if (room.getEarlyRefundPercent() < 0) {
+            inv.setItem(19, createItem(Material.GOLD_NUGGET, plugin.getLang().get("gui.room_manage.refund_name"),
+                    plugin.getLang().get("gui.room_manage.refund_line_global"),
+                    plugin.getLang().get("gui.room_manage.refund_hint")));
+        } else {
+            inv.setItem(19, createItem(Material.GOLD_NUGGET, plugin.getLang().get("gui.room_manage.refund_name"),
+                    plugin.getLang().get("gui.room_manage.refund_line", "percent", room.getEarlyRefundPercent() + "%"),
+                    plugin.getLang().get("gui.room_manage.refund_hint")));
+        }
+
+        // 预订折扣
+        if (room.isBookable()) {
+            inv.setItem(20, createItem(Material.PAPER, plugin.getLang().get("gui.room_manage.booking_name"),
+                    plugin.getLang().get("gui.room_manage.booking_line", "percent", room.getBookingDiscountPercent() + "%"),
+                    plugin.getLang().get("gui.room_manage.booking_hint")));
+        } else {
+            inv.setItem(20, createItem(Material.PAPER, plugin.getLang().get("gui.room_manage.booking_name"),
+                    plugin.getLang().get("gui.room_manage.booking_line_off"),
+                    plugin.getLang().get("gui.room_manage.booking_hint")));
+        }
+
         inv.setItem(21, createItem(Material.ENDER_PEARL, plugin.getLang().get("gui.room_manage.tp_name"),
                 plugin.getLang().get("gui.room_manage.tp_lore")));
 

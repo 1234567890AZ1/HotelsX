@@ -65,6 +65,13 @@ public class HotelRoom implements ConfigurationSerializable {
     private List<String> tags;          // 标签列表
     private double discountPrice;       // 折扣价（-1=无折扣）
     private long discountExpire;        // 折扣到期时间戳（0=无折扣）
+    private boolean autoDiscount;       // 当前折扣是否由自动定价任务写入（避免覆盖房主手动折扣）
+
+    private double deposit;             // 押金金额（-1=关闭押金）
+    private int earlyRefundPercent;     // 提前退房退款比例 0-100（-1=跟随全局配置）
+    private int bookingDiscountPercent; // 提前预订折扣比例 0-100（-1=关闭预订功能）
+    private int autoPricingMode;        // 时段自动定价：-1=跟随全局, 0=关闭, 1=开启
+    private int currentStayMinutes;     // 本次入住时长（分钟）：-1=使用房间/合集默认，0=不限时
 
     public HotelRoom() {
         this.id = UUID.randomUUID().toString().substring(0, 8);
@@ -74,6 +81,12 @@ public class HotelRoom implements ConfigurationSerializable {
         this.tags = new ArrayList<>();
         this.discountPrice = -1;
         this.discountExpire = 0;
+        this.autoDiscount = false;
+        this.deposit = -1;
+        this.earlyRefundPercent = -1;
+        this.bookingDiscountPercent = -1;
+        this.autoPricingMode = -1;
+        this.currentStayMinutes = -1;
         this.createdTime = System.currentTimeMillis();
     }
 
@@ -164,6 +177,12 @@ public class HotelRoom implements ConfigurationSerializable {
         map.put("tags", tags);
         map.put("discountPrice", discountPrice);
         map.put("discountExpire", discountExpire);
+        map.put("autoDiscount", autoDiscount);
+        map.put("deposit", deposit);
+        map.put("earlyRefundPercent", earlyRefundPercent);
+        map.put("bookingDiscountPercent", bookingDiscountPercent);
+        map.put("autoPricingMode", autoPricingMode);
+        map.put("currentStayMinutes", currentStayMinutes);
         return map;
     }
 
@@ -202,6 +221,12 @@ public class HotelRoom implements ConfigurationSerializable {
         room.tags = (List<String>) map.getOrDefault("tags", new ArrayList<>());
         room.discountPrice = ((Number) map.getOrDefault("discountPrice", -1)).doubleValue();
         room.discountExpire = ((Number) map.getOrDefault("discountExpire", 0)).longValue();
+        room.autoDiscount = map.get("autoDiscount") != null && (boolean) map.get("autoDiscount");
+        room.deposit = ((Number) map.getOrDefault("deposit", -1)).doubleValue();
+        room.earlyRefundPercent = ((Number) map.getOrDefault("earlyRefundPercent", -1)).intValue();
+        room.bookingDiscountPercent = ((Number) map.getOrDefault("bookingDiscountPercent", -1)).intValue();
+        room.autoPricingMode = ((Number) map.getOrDefault("autoPricingMode", -1)).intValue();
+        room.currentStayMinutes = ((Number) map.getOrDefault("currentStayMinutes", -1)).intValue();
         return room;
     }
 
@@ -412,6 +437,67 @@ public class HotelRoom implements ConfigurationSerializable {
     public void clearDiscount() {
         this.discountPrice = -1;
         this.discountExpire = 0;
+        this.autoDiscount = false;
+    }
+
+    /** 当前折扣是否由自动定价任务写入 */
+    public boolean isAutoDiscount() { return autoDiscount; }
+
+    /** 设置自动定价折扣（内部标记来源，便于自动任务安全地覆盖/清除） */
+    public void setAutoDiscount(double discountPrice, int durationMinutes) {
+        this.autoDiscount = true;
+        setDiscount(discountPrice, durationMinutes);
+    }
+
+    /** 标记为手动折扣 */
+    public void markManualDiscount() { this.autoDiscount = false; }
+
+    // ===== 押金 / 退款 / 预订 =====
+
+    /** 押金金额（-1 表示关闭押金） */
+    public double getDeposit() { return deposit; }
+    public void setDeposit(double deposit) { this.deposit = deposit; }
+    /** 是否启用了押金 */
+    public boolean hasDeposit() { return deposit > 0; }
+
+    /** 提前退房退款比例（-1 表示跟随全局配置） */
+    public int getEarlyRefundPercent() { return earlyRefundPercent; }
+    public void setEarlyRefundPercent(int earlyRefundPercent) { this.earlyRefundPercent = earlyRefundPercent; }
+
+    /** 提前预订折扣比例（-1 表示关闭预订功能） */
+    public int getBookingDiscountPercent() { return bookingDiscountPercent; }
+    public void setBookingDiscountPercent(int bookingDiscountPercent) { this.bookingDiscountPercent = bookingDiscountPercent; }
+    /** 是否支持预订 */
+    public boolean isBookable() { return bookingDiscountPercent >= 0; }
+
+    /** 时段自动定价模式：-1=跟随全局, 0=关闭, 1=开启 */
+    public int getAutoPricingMode() { return autoPricingMode; }
+    public void setAutoPricingMode(int autoPricingMode) { this.autoPricingMode = autoPricingMode; }
+
+    /**
+     * 结合全局开关，判断本房间是否启用时段自动定价
+     *
+     * @param globalEnabled 全局配置是否开启自动定价
+     */
+    public boolean isAutoPricingEnabled(boolean globalEnabled) {
+        if (autoPricingMode == 1) return true;
+        if (autoPricingMode == 0) return false;
+        return globalEnabled;
+    }
+
+    /** 本次入住时长（分钟）：-1=使用房间/合集默认，0=不限时 */
+    public int getCurrentStayMinutes() { return currentStayMinutes; }
+    public void setCurrentStayMinutes(int currentStayMinutes) { this.currentStayMinutes = currentStayMinutes; }
+
+    /**
+     * 获取当前入住的实际时长（分钟），0=不限时。
+     * 优先使用本次入住单独设置的时长（如预订指定时长），否则回退到房间/合集默认时长。
+     *
+     * @param collectionDuration 合集默认时长
+     */
+    public int getCurrentStayDuration(int collectionDuration) {
+        if (currentStayMinutes >= 0) return currentStayMinutes;
+        return getEffectiveDurationMinutes(collectionDuration);
     }
 
     /**

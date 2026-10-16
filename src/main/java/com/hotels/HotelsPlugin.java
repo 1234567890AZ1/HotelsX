@@ -40,6 +40,7 @@ import com.hotels.preset.PresetManager;
 import com.hotels.selection.SelectionManager;
 import com.hotels.shop.ShopService;
 import com.hotels.storage.EscrowStorage;
+import com.hotels.storage.BookingStorage;
 import com.hotels.storage.PresetStorage;
 import com.hotels.storage.RatingStorage;
 import com.hotels.storage.RoomStorage;
@@ -64,6 +65,7 @@ public class HotelsPlugin extends JavaPlugin {
     private EscrowStorage escrowStorage;
     private PresetStorage presetStorage;
     private ShopStorage shopStorage;
+    private BookingStorage bookingStorage;
     private PresetManager presetManager;
     private SelectionManager selectionManager;
     private EconomyManager economyManager;
@@ -72,11 +74,16 @@ public class HotelsPlugin extends JavaPlugin {
     private WebServer webServer;
     private ShopService shopService;
     private ShopContainerListener shopContainerListener;
+    private com.hotels.booking.BookingService bookingService;
+    private com.hotels.analytics.AutoPricingService autoPricingService;
+    private DepositService depositService;
     private Lang lang;
     private boolean debugMode;
     private boolean elevatorEnabled;
     private SchedulerCompat.CancellableTask autoCheckoutTask;
     private SchedulerCompat.CancellableTask reminderTask;
+    private SchedulerCompat.CancellableTask autoPricingTask;
+    private SchedulerCompat.CancellableTask bookingTask;
 
     // 已发送过临期警告的房间（roomId -> true），避免重复刷屏；剩余时间恢复后自动重置
     private final java.util.concurrent.ConcurrentHashMap<String, Boolean> alertedRooms = new java.util.concurrent.ConcurrentHashMap<>();
@@ -99,6 +106,7 @@ public class HotelsPlugin extends JavaPlugin {
         this.escrowStorage = new EscrowStorage(this);
         this.presetStorage = new PresetStorage(this);
         this.shopStorage = new ShopStorage(this);
+        this.bookingStorage = new BookingStorage(this);
         this.presetManager = new PresetManager(this);
         this.selectionManager = new SelectionManager();
         this.economyManager = new EconomyManager(this);
@@ -106,6 +114,9 @@ public class HotelsPlugin extends JavaPlugin {
         this.chatInputHandler = new ChatInputHandler(this);
         this.shopService = new ShopService(this);
         this.shopContainerListener = new ShopContainerListener(this);
+        this.bookingService = new com.hotels.booking.BookingService(this);
+        this.autoPricingService = new com.hotels.analytics.AutoPricingService(this);
+        this.depositService = new DepositService(this);
         this.elevatorEnabled = getConfig().getBoolean("elevator.enabled", false);
 
         // 加载数据
@@ -115,6 +126,7 @@ public class HotelsPlugin extends JavaPlugin {
         escrowStorage.loadAll();
         presetStorage.loadAll();
         shopStorage.loadAll();
+        bookingStorage.loadAll();
 
         // 检查超时入住（重启后恢复定时任务）
         checkOverdueCheckins();
@@ -124,6 +136,13 @@ public class HotelsPlugin extends JavaPlugin {
 
         // 全局周期任务：每 5 秒推送入住倒计时 ActionBar，并在临期时发送提醒
         reminderTask = SchedulerCompat.runTaskTimer(this, this::sendCheckinReminders, 100L, 100L);
+
+        // 全局周期任务：每 5 分钟刷新一次时段自动定价
+        autoPricingService.applyAutoPricing();
+        autoPricingTask = SchedulerCompat.runTaskTimer(this, () -> autoPricingService.applyAutoPricing(), 1200L, 6000L);
+
+        // 全局周期任务：每 30 秒处理预订到点入住与超时释放
+        bookingTask = SchedulerCompat.runTaskTimer(this, () -> bookingService.processDueBookings(), 600L, 600L);
 
         // 注册监听器
         getServer().getPluginManager().registerEvents(new GUIListener(this), this);
@@ -163,6 +182,16 @@ public class HotelsPlugin extends JavaPlugin {
             reminderTask.cancel();
             reminderTask = null;
         }
+        // 取消自动定价周期任务
+        if (autoPricingTask != null) {
+            autoPricingTask.cancel();
+            autoPricingTask = null;
+        }
+        // 取消预订处理周期任务
+        if (bookingTask != null) {
+            bookingTask.cancel();
+            bookingTask = null;
+        }
         if (webServer != null) {
             webServer.stop();
         }
@@ -181,6 +210,9 @@ public class HotelsPlugin extends JavaPlugin {
         if (shopStorage != null) {
             shopStorage.saveAll();
         }
+        if (bookingStorage != null) {
+            bookingStorage.saveAll();
+        }
         getLogger().info("Hotels 已禁用");
     }
 
@@ -194,6 +226,10 @@ public class HotelsPlugin extends JavaPlugin {
     public EscrowStorage getEscrowStorage() { return escrowStorage; }
     public PresetStorage getPresetStorage() { return presetStorage; }
     public ShopStorage getShopStorage() { return shopStorage; }
+    public BookingStorage getBookingStorage() { return bookingStorage; }
+    public com.hotels.booking.BookingService getBookingService() { return bookingService; }
+    public com.hotels.analytics.AutoPricingService getAutoPricingService() { return autoPricingService; }
+    public DepositService getDepositService() { return depositService; }
     public ShopService getShopService() { return shopService; }
     public PresetManager getPresetManager() { return presetManager; }
     public SelectionManager getSelectionManager() { return selectionManager; }
@@ -266,19 +302,8 @@ public class HotelsPlugin extends JavaPlugin {
             if (!room.isOccupied() || room.getCurrentGuest() == null) continue;
             checked++;
 
-            // 获取实际时长
-            int duration = room.getDurationMinutes();
-            if (duration == -1) {
-                // 从合集获取
-                for (RoomCollection col : roomStorage.getAllCollections()) {
-                    if (col.getRoomIds().contains(room.getId())) {
-                        duration = col.getDurationMinutes();
-                        break;
-                    }
-                }
-                if (duration == -1) duration = 0;
-            }
-
+            // 获取实际时长（优先本次入住设置，其次房间/合集默认）
+            int duration = resolveStayDuration(room);
             if (duration <= 0) continue; // 不限时
 
             long checkinTime = room.getCheckinTime();
@@ -303,6 +328,22 @@ public class HotelsPlugin extends JavaPlugin {
     }
 
     /**
+     * 计算房间当前入住的实际时长（分钟）：优先本次入住单独设置的时长（如预订指定），
+     * 否则回退到房间/合集默认时长；返回值 0 表示不限时。
+     */
+    public int resolveStayDuration(HotelRoom room) {
+        int collectionDuration = -1;
+        for (RoomCollection col : roomStorage.getAllCollections()) {
+            if (col.getRoomIds().contains(room.getId())) {
+                collectionDuration = col.getDurationMinutes();
+                break;
+            }
+        }
+        int duration = room.getCurrentStayDuration(collectionDuration);
+        return duration < 0 ? 0 : duration;
+    }
+
+    /**
      * 入住倒计时提醒：每 5 秒推送 ActionBar 剩余时间，临期（≤60秒）发送一次性续费警告
      */
     private void sendCheckinReminders() {
@@ -310,16 +351,7 @@ public class HotelsPlugin extends JavaPlugin {
         for (HotelRoom room : roomStorage.getAllRooms()) {
             if (!room.isOccupied() || room.getCurrentGuest() == null) continue;
 
-            int duration = room.getDurationMinutes();
-            if (duration == -1) {
-                for (RoomCollection col : roomStorage.getAllCollections()) {
-                    if (col.getRoomIds().contains(room.getId())) {
-                        duration = col.getDurationMinutes();
-                        break;
-                    }
-                }
-                if (duration == -1) duration = 0;
-            }
+            int duration = resolveStayDuration(room);
             if (duration <= 0) continue; // 不限时
 
             Player guest = Bukkit.getPlayer(room.getCurrentGuest());

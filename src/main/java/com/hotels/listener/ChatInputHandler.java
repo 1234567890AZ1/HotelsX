@@ -153,6 +153,63 @@ public class ChatInputHandler implements Listener {
                 plugin.log(player, "设置房间密码: " + room.getName());
                 plugin.getLang().send(player, "listener.chat.password_set");
                 break;
+
+            case "setdeposit":
+                try {
+                    double amount = Double.parseDouble(message);
+                    if (amount < 0) {
+                        plugin.getLang().send(player, "listener.chat.deposit_negative");
+                        return;
+                    }
+                    if (amount > 1000000) {
+                        plugin.getLang().send(player, "listener.chat.price_too_high_max");
+                        return;
+                    }
+                    room.setDeposit(amount <= 0 ? -1 : amount);
+                    plugin.getRoomStorage().saveRoom(room);
+                    plugin.log(player, "设置房间押金: " + room.getName() + " = " + amount);
+                    plugin.getLang().send(player, "listener.chat.deposit_set",
+                            "amount", plugin.getEconomyManager().format(amount));
+                } catch (NumberFormatException e) {
+                    plugin.getLang().send(player, "listener.chat.invalid_number");
+                }
+                break;
+
+            case "setearlyrefund":
+                try {
+                    int percent = Integer.parseInt(message);
+                    if (percent < 0 || percent > 100) {
+                        plugin.getLang().send(player, "listener.chat.refund_percent_invalid");
+                        return;
+                    }
+                    room.setEarlyRefundPercent(percent);
+                    plugin.getRoomStorage().saveRoom(room);
+                    plugin.log(player, "设置提前退房退款比例: " + room.getName() + " = " + percent + "%");
+                    plugin.getLang().send(player, "listener.chat.refund_set", "percent", percent);
+                } catch (NumberFormatException e) {
+                    plugin.getLang().send(player, "listener.chat.refund_percent_invalid");
+                }
+                break;
+
+            case "setbookingdiscount":
+                try {
+                    int percent = Integer.parseInt(message);
+                    if (percent < -1 || percent > 100) {
+                        plugin.getLang().send(player, "listener.chat.booking_percent_invalid");
+                        return;
+                    }
+                    room.setBookingDiscountPercent(percent);
+                    plugin.getRoomStorage().saveRoom(room);
+                    plugin.log(player, "设置预订折扣: " + room.getName() + " = " + percent + "%");
+                    if (percent < 0) {
+                        plugin.getLang().send(player, "listener.chat.booking_off");
+                    } else {
+                        plugin.getLang().send(player, "listener.chat.booking_set", "percent", percent);
+                    }
+                } catch (NumberFormatException e) {
+                    plugin.getLang().send(player, "listener.chat.booking_percent_invalid");
+                }
+                break;
         }
     }
 
@@ -306,6 +363,7 @@ public class ChatInputHandler implements Listener {
                 }
 
                 room.setDiscount(discountPrice, minutes);
+                room.markManualDiscount(); // 标记为房主手动折扣，避免被时段自动定价覆盖
                 plugin.getRoomStorage().saveRoom(room);
                 plugin.log(player, "设置折扣: " + room.getName() + " 价格=" + discountPrice + " 时长=" + minutes + "分钟");
                 plugin.getLang().send(player, "listener.chat.discount_set", "price", discountPrice, "minutes", minutes);

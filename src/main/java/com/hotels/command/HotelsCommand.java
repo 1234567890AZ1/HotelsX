@@ -178,6 +178,14 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
                 handleExtend(player, args);
                 break;
 
+            case "book":
+                handleBook(player, args);
+                break;
+
+            case "bookings":
+                handleBookings(player);
+                break;
+
             case "ratings":
             case "rating":
                 handleRatings(player, args);
@@ -720,17 +728,8 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        // 获取本次入住的有效时长（分钟）
-        int duration = room.getDurationMinutes();
-        if (duration == -1) {
-            for (com.hotels.model.RoomCollection col : plugin.getRoomStorage().getAllCollections()) {
-                if (col.getRoomIds().contains(room.getId())) {
-                    duration = col.getDurationMinutes();
-                    break;
-                }
-            }
-            if (duration == -1) duration = 0;
-        }
+        // 获取本次入住的有效时长（分钟），优先本次入住固定时长
+        int duration = plugin.resolveStayDuration(room);
         if (duration <= 0) {
             plugin.getLang().send(player, "command.extend.unlimited");
             return;
@@ -826,6 +825,60 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
         }
         if (!any) {
             plugin.getLang().send(player, "command.ratings.my_none");
+        }
+    }
+
+    /**
+     * /ht book <房间ID> <多少分钟后开始> <住多少分钟>
+     * /ht book cancel <预订ID>
+     */
+    private void handleBook(Player player, String[] args) {
+        if (args.length >= 2 && "cancel".equalsIgnoreCase(args[1])) {
+            if (args.length < 3) {
+                plugin.getLang().send(player, "command.book.cancel_usage");
+                return;
+            }
+            plugin.getBookingService().cancel(player, args[2]);
+            return;
+        }
+        if (args.length < 4) {
+            plugin.getLang().send(player, "command.book.usage");
+            return;
+        }
+        HotelRoom room = plugin.getRoomStorage().getRoom(args[1]);
+        if (room == null) {
+            plugin.getLang().send(player, "common.room_not_found");
+            return;
+        }
+        int delay;
+        int duration;
+        try {
+            delay = Integer.parseInt(args[2]);
+            duration = Integer.parseInt(args[3]);
+        } catch (NumberFormatException e) {
+            plugin.getLang().send(player, "command.book.invalid_number");
+            return;
+        }
+        plugin.getBookingService().book(player, room, delay, duration);
+    }
+
+    /**
+     * /ht bookings - 查看自己未结束的预订
+     */
+    private void handleBookings(Player player) {
+        java.util.List<com.hotels.booking.Booking> list = plugin.getBookingService().getOpenBookings(player);
+        if (list.isEmpty()) {
+            plugin.getLang().send(player, "command.bookings.none");
+            return;
+        }
+        plugin.getLang().send(player, "command.bookings.title", "count", list.size());
+        java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("MM-dd HH:mm");
+        for (com.hotels.booking.Booking b : list) {
+            plugin.getLang().send(player, "command.bookings.line",
+                    "id", b.getId(), "room", b.getRoomName(),
+                    "time", fmt.format(new java.util.Date(b.getStartTime())),
+                    "minutes", b.getDurationMinutes(),
+                    "status", plugin.getLang().get("command.bookings.status_" + b.getStatus().name().toLowerCase()));
         }
     }
 
@@ -1130,7 +1183,8 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
             List<String> completions = new ArrayList<>(Arrays.asList(
                     "wand", "create", "remove", "manage",
                     "list", "checkin", "checkout", "tp", "teleport", "info",
-                    "confirm", "elevator", "checkedin", "stays", "rate", "ratings", "claim", "extend"
+                    "confirm", "elevator", "checkedin", "stays", "rate", "ratings", "claim", "extend",
+                    "book", "bookings"
             ));
             if (player.hasPermission("hotels.admin") || player.isOp()) {
                 completions.add("admin");
@@ -1153,6 +1207,7 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
                 case "ratings":
                 case "rating":
                 case "extend":
+                case "book":
                     // 补全房间 ID
                     return plugin.getRoomStorage().getAllRooms().stream()
                             .map(HotelRoom::getId)
