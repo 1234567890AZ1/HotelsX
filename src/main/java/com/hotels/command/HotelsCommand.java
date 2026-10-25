@@ -79,6 +79,14 @@ public class HotelsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        // 除管理类子命令（自身另有 hotels.admin 校验）外，所有功能入口都要求 hotels.use
+        String sub = args[0].toLowerCase();
+        boolean adminOnlySub = "admin".equals(sub) || "debug".equals(sub);
+        if (!adminOnlySub && !player.hasPermission("hotels.use") && !player.hasPermission("hotels.admin")) {
+            plugin.getLang().send(player, "common.no_permission_use");
+            return true;
+        }
+
         switch (args[0].toLowerCase()) {
             case "wand":
             case "sel":

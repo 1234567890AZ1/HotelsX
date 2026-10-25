@@ -256,6 +256,8 @@ booking:
   room_not_bookable: "&cThis room does not accept bookings"
   own_room: "&cYou cannot book your own room"
   room_unavailable: "&cThis room is currently unavailable for booking"
+  room_locked: "&cThis room is locked and cannot be booked"
+  room_password: "&cThis room requires a check-in password, please check in directly instead"
   room_has_booking: "&cThis room already has an open booking"
   delay_positive: "&cStart delay must be greater than 0"
   too_far: "&cYou can only book up to &e{days} &cdays in advance"
@@ -397,6 +399,9 @@ listener:
     no_break: "&cYou do not have permission to break blocks in this room"
     no_place: "&cYou do not have permission to place blocks in this room"
     no_container: "&cYou do not have permission to open containers in this room"
+    no_ignite: "&cYou do not have permission to ignite fire in this room"
+    no_sign: "&cYou do not have permission to edit signs in this room"
+    no_entity: "&cYou do not have permission to use item frames or armor stands in this room"
   guard:
     no_enter: "&cYou do not have permission to enter this room"
   door:

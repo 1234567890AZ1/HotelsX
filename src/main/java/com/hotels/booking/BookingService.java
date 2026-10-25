@@ -76,6 +76,16 @@ public class BookingService {
             plugin.getLang().send(player, "booking.own_room");
             return false;
         }
+        // 预订到点会自动入住，无法弹出密码输入；因此锁定房间与带密码房间不接受预订，
+        // 否则预订通道将成为绕过房间密码的入口
+        if (room.isLocked()) {
+            plugin.getLang().send(player, "booking.room_locked");
+            return false;
+        }
+        if (room.hasPassword()) {
+            plugin.getLang().send(player, "booking.room_password");
+            return false;
+        }
         if (!room.isAvailable()) {
             plugin.getLang().send(player, "booking.room_unavailable");
             return false;
@@ -181,8 +191,8 @@ public class BookingService {
                 refund(b, noShowRefund, Booking.Status.NO_SHOW, "booking.notify_no_show");
                 continue;
             }
-            // 房间被占用 / 锁定，无法入住
-            if (!room.isAvailable() || room.isLocked()) {
+            // 房间被占用 / 锁定 / 后来加了密码，都无法自动入住（退款释放）
+            if (!room.isAvailable() || room.isLocked() || room.hasPassword()) {
                 refund(b, 100, Booking.Status.FAILED, "booking.notify_failed");
                 continue;
             }

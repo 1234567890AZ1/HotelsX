@@ -165,6 +165,15 @@ public class ShopService {
             var container = getBlockContainer(shop);
             if (container == null) return false;
             Inventory inv = container.getInventory();
+            // 先确认容器里确实够数，再动手移除：
+            // 直接边移边判会导致"移出一部分后发现不够"时物品已经消失
+            int available = 0;
+            for (int i = 0; i < inv.getSize(); i++) {
+                ItemStack it = inv.getItem(i);
+                if (it != null && it.getType() == mat) available += it.getAmount();
+            }
+            if (available < amount) return false;
+
             int remaining = amount;
             for (int i = 0; i < inv.getSize() && remaining > 0; i++) {
                 ItemStack it = inv.getItem(i);
@@ -197,8 +206,11 @@ public class ShopService {
 
     /**
      * 购买商品（出售商店）
+     *
+     * <p>串行化执行：库存校验与扣减之间必须原子，否则并发购买会超卖（FIXED 模式）
+     * 或对同一批容器物品重复发货。</p>
      */
-    public ShopResult purchase(Shop shop, String buyerName, int amount) {
+    public synchronized ShopResult purchase(Shop shop, String buyerName, int amount) {
         if (!isShopEnabled()) return new ShopResult(false, "店面系统未启用");
         if (buyerName == null || buyerName.isEmpty()) return new ShopResult(false, "当前账号未关联游戏内玩家名，无法购买");
         if (amount < 1) return new ShopResult(false, "购买数量无效");
@@ -287,7 +299,7 @@ public class ShopService {
     /**
      * FIXED 模式补货入库：把容器内所有同种物品移出容器，折算进固定库存
      */
-    public ShopResult restock(Shop shop) {
+    public synchronized ShopResult restock(Shop shop) {
         if (shop == null) return new ShopResult(false, "店铺不存在");
         if (shop.getMode() != Shop.ShopMode.FIXED) return new ShopResult(false, "AUTO 模式库存实时跟随容器，无需补货");
         Material mat = matchMaterial(shop.getMaterial());

@@ -121,11 +121,20 @@ public final class WebHttp {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
     }
 
-    /** JS 字符串转义（用于 HTML 属性内的 onclick 等 JS 上下文，单引号需转义为 \' 防止字符串逃逸） */
+    /**
+     * 用于 HTML 属性内 onclick 等"JS 字符串"上下文的转义。
+     *
+     * <p>必须两步：先做 JS 字符串转义（反斜杠/引号/换行），再做 HTML 属性实体转义。
+     * 只做 JS 转义是不够的——HTML 解析器不认识反斜杠，值里的裸引号会直接终止属性，
+     * 从而把房间名/店铺名等玩家可控文本注入成标签（存储型 XSS）。</p>
+     */
     public static String escapeJsAttr(String s) {
         if (s == null) return "";
-        return s.replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"")
+        String js = s.replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"")
                 .replace("\n", "\\n").replace("\r", "\\r");
+        // HTML 属性实体转义：& 必须最先处理，避免后续生成的实体被二次转义
+        return js.replace("&", "&amp;").replace("\"", "&quot;").replace("'", "&#39;")
+                .replace("<", "&lt;").replace(">", "&gt;");
     }
 
     /** JSON 字符串转义（处理反斜杠、引号、控制字符） */

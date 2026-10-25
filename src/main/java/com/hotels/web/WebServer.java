@@ -380,11 +380,10 @@ public class WebServer {
             plugin.getLogger().warning("========================================");
             plugin.getLogger().warning("Web 面板首次启动（或检测到默认弱口令），已自动生成超级管理员密码");
             plugin.getLogger().warning("用户名: admin");
-            plugin.getLogger().warning("密码:   " + randomPwd);
-            plugin.getLogger().warning("密码已自动保存到 plugins/HotelsX/config.yml 的 web-admins 节点");
-            plugin.getLogger().warning("请登录后立即在 [管理员账号 -> 修改密码] 中更改密码！");
+            plugin.getLogger().warning("初始密码已写入 plugins/HotelsX/web-admin.txt（不在控制台输出）");
+            plugin.getLogger().warning("首次登录成功后该文件会被自动删除，请立即修改密码！");
             plugin.getLogger().warning("========================================");
-            // 同时写入一个密码提示文件（方便查阅）
+            // 密码只落盘到 data 目录，不写进控制台日志（日志常被转发/留存）
             writePasswordFile(randomPwd);
         }
     }
@@ -468,10 +467,20 @@ public class WebServer {
                 fw.write("密码:   " + pwd + "\n");
                 fw.write("============================\n");
                 fw.write("登录后请立即修改密码！\n");
-                fw.write("此文件可安全删除。\n");
+                fw.write("登录成功后此文件会被自动删除。\n");
             }
         } catch (IOException e) {
             plugin.getLogger().warning("写入初始密码文件失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 删除初始密码文件（首次成功登录后调用）
+     */
+    private void deletePasswordFile() {
+        File f = new File(plugin.getDataFolder(), "web-admin.txt");
+        if (f.exists() && !f.delete()) {
+            plugin.getLogger().warning("删除初始密码文件失败，请手动删除: " + f.getAbsolutePath());
         }
     }
 
@@ -489,6 +498,32 @@ public class WebServer {
         }
         plugin.getConfig().set("web-admins", list);
         plugin.saveConfig();
+    }
+
+    /**
+     * 读取请求携带的会话 ID（无则返回 null）
+     */
+    private String sessionIdOf(HttpExchange exchange) {
+        String cookieHeader = exchange.getRequestHeaders().getFirst("Cookie");
+        if (cookieHeader == null) return null;
+        for (String part : cookieHeader.split(";")) {
+            part = part.trim();
+            if (part.startsWith("hotelsx_session=")) {
+                return part.substring("hotelsx_session=".length());
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 让指定账号的会话立即失效（改密 / 删号后必须踢下旧会话）
+     *
+     * @param keepSid 保留的会话 ID（通常是发起操作者自己的会话）；null 表示全部失效
+     */
+    private void invalidateSessions(String username, String keepSid) {
+        if (username == null) return;
+        sessions.entrySet().removeIf(e ->
+                e.getValue().username.equals(username) && (keepSid == null || !e.getKey().equals(keepSid)));
     }
 
     private Session getSession(HttpExchange exchange) {
@@ -645,6 +680,8 @@ public class WebServer {
                         saveAdmins();
                     }
                     createSession(a.username, a.role, a.minecraftName, exchange);
+                    // 初始密码文件只应存在到首次成功登录，登录后立即清除
+                    deletePasswordFile();
                     Map<String, Object> r = new HashMap<>();
                     r.put("success", true); r.put("username", a.username); r.put("role", a.role);
                     r.put("minecraftName", a.minecraftName);
@@ -970,8 +1007,13 @@ public class WebServer {
                         }
                         case "setPrice" -> {
                             if (!canManageRoom(session, room)) { failed++; errors.append(rid).append("无权操作; "); continue; }
-                            try { room.setPrice(Double.parseDouble(form.getOrDefault("price", "0"))); }
-                            catch (NumberFormatException e) { failed++; errors.append(rid).append("价格格式错误; "); continue; }
+                            try {
+                                double p = Double.parseDouble(form.getOrDefault("price", "0"));
+                                if (!Double.isFinite(p) || p < 0 || p > 1_000_000) {
+                                    failed++; errors.append(rid).append("价格超出范围; "); continue;
+                                }
+                                room.setPrice(p);
+                            } catch (NumberFormatException e) { failed++; errors.append(rid).append("价格格式错误; "); continue; }
                         }
                         case "setStatus" -> {
                             if (!canManageRoom(session, room)) { failed++; errors.append(rid).append("无权操作; "); continue; }
@@ -1058,7 +1100,11 @@ public class WebServer {
             if (!requireCsrf(exchange)) return;
             if (form.containsKey("name")) room.setName(form.get("name"));
             if (form.containsKey("price")) {
-                try { room.setPrice(Double.parseDouble(form.get("price"))); } catch (NumberFormatException ignored) {}
+                // 必须拒绝 NaN/Infinity：它们能通过 "price < 0 || price > 上限" 这类比较，污染经济计算
+                try {
+                    double p = Double.parseDouble(form.get("price"));
+                    if (Double.isFinite(p) && p >= 0 && p <= 1_000_000) room.setPrice(p);
+                } catch (NumberFormatException ignored) {}
             }
             if (form.containsKey("locked")) room.setLocked(Boolean.parseBoolean(form.get("locked")));
             if (form.containsKey("status")) {
@@ -1146,7 +1192,7 @@ public class WebServer {
             } catch (NumberFormatException e) {
                 WebHttp.sendJson(exchange, 400, "{\"error\":\"价格格式不正确\"}"); return;
             }
-            if (price < 0 || price > 1_000_000) { WebHttp.sendJson(exchange, 400, "{\"error\":\"价格超出允许范围\"}"); return; }
+            if (!Double.isFinite(price) || price < 0 || price > 1_000_000) { WebHttp.sendJson(exchange, 400, "{\"error\":\"价格超出允许范围\"}"); return; }
             room.setPrice(price);
             plugin.getRoomStorage().saveRoom(room);
             plugin.getRoomStorage().saveAll();
@@ -1224,6 +1270,7 @@ public class WebServer {
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
                 WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
             }
+            if (!requireCsrf(exchange)) return;
             Map<String, String> form = WebHttp.parseForm(WebHttp.readBody(exchange));
             String target = form.getOrDefault("username", "");
             Session s = getSession(exchange);
@@ -1231,6 +1278,8 @@ public class WebServer {
             boolean removed = admins.removeIf(a -> a.username.equals(target));
             if (!removed) { WebHttp.sendJson(exchange, 404, "{\"error\":\"管理员不存在\"}"); return; }
             saveAdmins();
+            // 账号删除后其所有会话立即失效
+            invalidateSessions(target, null);
             Map<String, Object> res = new HashMap<>();
             res.put("success", true); res.put("message", "管理员已删除: " + target);
             WebHttp.sendJson(exchange, 200, WebHttp.toJson(res));
@@ -1244,6 +1293,7 @@ public class WebServer {
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
                 WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
             }
+            if (!requireCsrf(exchange)) return;
             Map<String, String> form = WebHttp.parseForm(WebHttp.readBody(exchange));
             String oldPwd = form.getOrDefault("oldPassword", "");
             String newPwd = form.getOrDefault("newPassword", "");
@@ -1253,6 +1303,8 @@ public class WebServer {
                     if (!verifyPassword(oldPwd, a.password)) { WebHttp.sendJson(exchange, 401, "{\"error\":\"原密码错误\"}"); return; }
                     a.password = hashPassword(newPwd);
                     saveAdmins();
+                    // 改密后其它会话必须失效（保留当前会话，避免操作者被自己踢下线）
+                    invalidateSessions(a.username, sessionIdOf(exchange));
                     Map<String, Object> r = new HashMap<>();
                     r.put("success", true); r.put("message", "密码已修改");
                     WebHttp.sendJson(exchange, 200, WebHttp.toJson(r));
@@ -1282,6 +1334,7 @@ public class WebServer {
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
                 WebHttp.sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}"); return;
             }
+            if (!requireCsrf(exchange)) return;
             Map<String, String> form = WebHttp.parseForm(WebHttp.readBody(exchange));
             String command = form.getOrDefault("command", "").trim();
             if (command.isEmpty()) {
@@ -1572,7 +1625,6 @@ public class WebServer {
 
             String body = WebHttp.readBody(exchange);
             Map<String, String> form = WebHttp.parseForm(body);
-            String uuid = form.get("uuid");
             String name = form.get("name");
 
             // 权限：superadmin/admin 可代任意房主提现；user 只能提现自己（通过 minecraft-name 匹配）
@@ -1587,13 +1639,17 @@ public class WebServer {
                 }
             }
 
-            if (uuid == null || uuid.isEmpty()) {
+            if (name == null || name.isBlank()) {
                 Map<String, Object> resp = new LinkedHashMap<>();
                 resp.put("success", false);
                 resp.put("message", "缺少玩家信息");
                 WebHttp.sendJson(exchange, 200, WebHttp.toJson(resp));
                 return;
             }
+
+            // UUID 由服务端按玩家名解析，绝不采信客户端提交的 uuid
+            // （否则可提交自己的名字 + 他人的 uuid 把收益提到任意账户）
+            String uuid = Bukkit.getOfflinePlayer(name).getUniqueId().toString();
 
             double pending = plugin.getEscrowStorage().getPending(uuid);
             if (pending <= 0) {
@@ -1810,17 +1866,15 @@ public class WebServer {
             double price;
             try { price = Double.parseDouble(form.getOrDefault("price", "0")); }
             catch (NumberFormatException e) { shopResp(exchange, false, "价格无效"); return; }
-            if (price <= 0 || price > svc.getMaxPrice()) {
+            if (!Double.isFinite(price) || price <= 0 || price > svc.getMaxPrice()) {
                 shopResp(exchange, false, "单价必须在 0 ~ " + (long) svc.getMaxPrice() + " 之间"); return;
             }
             // 模式
             String modeStr = form.getOrDefault("mode", plugin.getConfig().getString("shop.default-mode", "AUTO")).toUpperCase();
             Shop.ShopMode mode = "FIXED".equals(modeStr) ? Shop.ShopMode.FIXED : Shop.ShopMode.AUTO;
+            // 固定库存只能通过"补货入库"从真实容器移出物品来增加，
+            // 不接受客户端填写的库存数字（否则可凭空发货无限刷物品）
             int stock = 0;
-            if (mode == Shop.ShopMode.FIXED) {
-                try { stock = Math.max(0, Integer.parseInt(form.getOrDefault("stock", "0"))); }
-                catch (NumberFormatException ignored) {}
-            }
             // 数量上限
             if (plugin.getShopStorage().getShopsByOwner(ownerUuid).size() >= svc.getMaxShopsPerPlayer()) {
                 shopResp(exchange, false, "店面数量已达上限（" + svc.getMaxShopsPerPlayer() + " 个）"); return;
@@ -1888,7 +1942,7 @@ public class WebServer {
                 double price;
                 try { price = Double.parseDouble(priceStr); }
                 catch (NumberFormatException e) { shopResp(exchange, false, "价格无效"); return; }
-                if (price <= 0 || price > plugin.getShopService().getMaxPrice()) {
+                if (!Double.isFinite(price) || price <= 0 || price > plugin.getShopService().getMaxPrice()) {
                     shopResp(exchange, false, "单价必须在 0 ~ " + (long) plugin.getShopService().getMaxPrice() + " 之间"); return;
                 }
                 shop.setPrice(price);
@@ -1898,11 +1952,7 @@ public class WebServer {
             if (modeStr != null) {
                 shop.setMode("FIXED".equals(modeStr) ? Shop.ShopMode.FIXED : Shop.ShopMode.AUTO);
             }
-            String stockStr = form.get("stock");
-            if (stockStr != null && !stockStr.isBlank() && shop.getMode() == Shop.ShopMode.FIXED) {
-                try { shop.setStock(Integer.parseInt(stockStr)); }
-                catch (NumberFormatException ignored) {}
-            }
+            // 库存不接受客户端写入：只能通过"补货入库"从真实容器移出物品来增加
             if (form.containsKey("name")) shop.setDisplayName(form.get("name"));
 
             plugin.getShopStorage().saveShop(shop);
@@ -2236,7 +2286,7 @@ public class WebServer {
                     + "<div><label for='scPrice'>单价</label><input type='number' step='0.01' min='0.01' id='scPrice' placeholder='价格'></div>"
                     + "<div><label for='scMode'>补货模式</label><select id='scMode' onchange='toggleStockInput()'>"
                     + "<option value='AUTO'>AUTO（容器实时库存）</option><option value='FIXED'>FIXED（固定库存）</option></select></div>"
-                    + "<div id='stockWrap' style='display:none;'><label for='scStock'>初始库存</label><input type='number' min='0' id='scStock' value='0'></div>"
+                    + "<div id='stockWrap' style='display:none;'><label>固定库存</label><span style='font-size:12px;color:var(--c-text-faint);'>创建后由「补货入库」从容器实物入账</span></div>"
                     + "<button class='btn btn-primary' onclick='createShop()'>创建店铺</button>"
                     + "</div>";
         } else {

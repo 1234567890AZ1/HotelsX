@@ -319,9 +319,9 @@ public class PresetManager {
             }
 
             if (SchedulerCompat.isFolia()) {
-                applyFolia(world, b, preset, player);
+                applyFolia(world, b, preset, player, player.hasPermission("hotels.admin"));
             } else {
-                applyNonFolia(world, b, preset, player);
+                applyNonFolia(world, b, preset, player, player.hasPermission("hotels.admin"));
             }
         });
     }
@@ -358,9 +358,9 @@ public class PresetManager {
         undoBackups.remove(room.getId());
 
         if (SchedulerCompat.isFolia()) {
-            applyFolia(world, b, backup, player);
+            applyFolia(world, b, backup, player, true);
         } else {
-            applyNonFolia(world, b, backup, player);
+            applyNonFolia(world, b, backup, player, true);
         }
         return true;
     }
@@ -385,7 +385,7 @@ public class PresetManager {
     /**
      * 非 Folia 实现：每个 tick 处理一个 chunk，避免主线程卡顿
      */
-    private void applyNonFolia(World world, int[] b, RoomPreset preset, Player player) {
+    private void applyNonFolia(World world, int[] b, RoomPreset preset, Player player, boolean restoreItems) {
         Deque<Long> chunkQueue = buildChunkQueue(b);
         int totalChunks = chunkQueue.size();
         int[] done = {0};
@@ -402,7 +402,7 @@ public class PresetManager {
             }
             int cx = (int) (key & 0xFFFFFFFFL);
             int cz = (int) (key >>> 32);
-            processChunk(world, b, preset, cx, cz);
+            processChunk(world, b, preset, cx, cz, restoreItems);
             done[0]++;
             if (done[0] % 5 == 0 || done[0] == totalChunks) {
                 plugin.getLang().send(player, "preset.progress", "done", done[0], "total", totalChunks);
@@ -413,7 +413,7 @@ public class PresetManager {
     /**
      * Folia 实现：每个 chunk 调度到其所属区域线程并行执行
      */
-    private void applyFolia(World world, int[] b, RoomPreset preset, Player player) {
+    private void applyFolia(World world, int[] b, RoomPreset preset, Player player, boolean restoreItems) {
         Deque<Long> chunkQueue = buildChunkQueue(b);
         int totalChunks = chunkQueue.size();
         int[] done = {0};
@@ -424,7 +424,7 @@ public class PresetManager {
             int cz = (int) (key >>> 32);
             Location center = new Location(world, (cx << 4) + 7.5, b[1], (cz << 4) + 7.5);
             SchedulerCompat.runOnRegion(plugin, center, () -> {
-                processChunk(world, b, preset, cx, cz);
+                processChunk(world, b, preset, cx, cz, restoreItems);
                 done[0]++;
                 if (done[0] == totalChunks) {
                     applying.remove(player);
@@ -455,7 +455,7 @@ public class PresetManager {
     /**
      * 处理单个 chunk：先清空该 chunk 与房间区域的交集，再放置预设方块（区域线程/主线程内执行）
      */
-    private void processChunk(World world, int[] b, RoomPreset preset, int cx, int cz) {
+    private void processChunk(World world, int[] b, RoomPreset preset, int cx, int cz, boolean restoreItems) {
         int minX = b[0], minY = b[1], minZ = b[2], maxX = b[3], maxY = b[4], maxZ = b[5];
 
         int wx0 = Math.max(minX, cx << 4);
@@ -494,7 +494,7 @@ public class PresetManager {
             }
             block.setBlockData(bd, false);
             // extras 使用原始快照坐标查找（保存时存入的 key 就是原始坐标）
-            applyExtra(world, block, ax, ay, az, preset, sl.x, sl.y, sl.z);
+            applyExtra(world, block, ax, ay, az, preset, sl.x, sl.y, sl.z, restoreItems);
         }
     }
 
@@ -524,7 +524,7 @@ public class PresetManager {
      * 恢复容器内容物 / 告示牌文字。
      * extras 在保存时以原始快照坐标存储，直接按原始坐标查找即可。
      */
-    private void applyExtra(World world, Block block, int ax, int ay, int az, RoomPreset preset, int origRx, int origRy, int origRz) {
+    private void applyExtra(World world, Block block, int ax, int ay, int az, RoomPreset preset, int origRx, int origRy, int origRz, boolean restoreItems) {
         Map<String, Object> extra = preset.getExtras().get(origRx + ":" + origRy + ":" + origRz);
         if (extra == null) return;
 
@@ -532,6 +532,12 @@ public class PresetManager {
         BlockState st = world.getBlockAt(ax, ay, az).getState();
         try {
             if ("container".equals(type) && st instanceof Container) {
+                if (!restoreItems) {
+                    // 非管理员不允许恢复容器内容物：否则反复应用同一预设可无限复制物品
+                    ((Container) st).getInventory().clear();
+                    st.update(true, false);
+                    return;
+                }
                 List<?> itemMaps = (List<?>) extra.get("items");
                 ItemStack[] contents = new ItemStack[itemMaps.size()];
                 for (int i = 0; i < itemMaps.size(); i++) {

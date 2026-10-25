@@ -72,20 +72,12 @@ public class RoomGuardListener implements Listener {
 
             // 其他情况：推出去
             Location from = event.getFrom();
-            // 如果玩家本来就在区域内（from 也在区域内），不反复推
-            if (room.containsLocation(from)) {
-                // 已经在里面了，但没权限 -> 还是推出去
-            }
-
             plugin.log(player, "尝试进入房间被拒绝: " + room.getName() + " (权限不足)");
 
-            // 把玩家传送到房间入口外面（传送点附近偏移）
-            Location spawn = new Location(
-                    to.getWorld(),
-                    room.getSpawnX() + 2, room.getSpawnY(), room.getSpawnZ() + 2,
-                    room.getSpawnYaw(), room.getSpawnPitch()
-            );
-            com.hotels.util.SchedulerCompat.teleport(player, spawn);
+            // 落点必须在房间区域之外：优先退回进入前的位置，
+            // 若玩家本来就在区域内（例如在房间里登录），则推到最近的房间边界外
+            Location exit = safeExit(room, from, to);
+            com.hotels.util.SchedulerCompat.teleport(player, exit);
             plugin.getLang().send(player, "listener.guard.no_enter");
 
             plugin.debug(player, "玩家被拒绝进入房间: " + player.getName() + " 尝试进入 " + room.getName());
@@ -93,5 +85,35 @@ public class RoomGuardListener implements Listener {
             event.setCancelled(true);
             return;
         }
+    }
+
+    /**
+     * 计算房间区域外的安全落点，避免把入侵者传送到房间内部
+     */
+    private Location safeExit(HotelRoom room, Location from, Location to) {
+        if (from != null && from.getWorld() != null && !room.containsLocation(from)) {
+            return from.clone();
+        }
+        double minX = Math.min(room.getX1(), room.getX2());
+        double maxX = Math.max(room.getX1(), room.getX2());
+        double minY = Math.min(room.getY1(), room.getY2());
+        double maxY = Math.max(room.getY1(), room.getY2());
+        double minZ = Math.min(room.getZ1(), room.getZ2());
+        double maxZ = Math.max(room.getZ1(), room.getZ2());
+
+        double px = from != null ? from.getX() : (minX + maxX) / 2;
+        double py = from != null ? from.getY() : minY;
+        double pz = from != null ? from.getZ() : (minZ + maxZ) / 2;
+
+        double dMinX = px - minX, dMaxX = maxX - px, dMinZ = pz - minZ, dMaxZ = maxZ - pz;
+        double nearest = Math.min(Math.min(dMinX, dMaxX), Math.min(dMinZ, dMaxZ));
+        double x = px, z = pz;
+        if (nearest == dMinX) x = minX - 1.5;
+        else if (nearest == dMaxX) x = maxX + 1.5;
+        else if (nearest == dMinZ) z = minZ - 1.5;
+        else z = maxZ + 1.5;
+
+        py = Math.max(minY - 1, Math.min(py, maxY + 1));
+        return new Location(to.getWorld(), x, py, z, to.getYaw(), to.getPitch());
     }
 }

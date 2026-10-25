@@ -112,7 +112,7 @@ public class CheckinHandler {
                         player.getUniqueId().toString(), player.getName(),
                         depositAmount, room.getId(), room.getName(),
                         "押金扣押: " + room.getName());
-                plugin.getDepositService().hold(room, depositAmount);
+                plugin.getDepositService().hold(room, player.getUniqueId(), depositAmount);
                 plugin.getLang().send(player, "checkin.deposit_held",
                         "amount", economy.format(depositAmount));
             }

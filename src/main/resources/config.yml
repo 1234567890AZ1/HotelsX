@@ -167,5 +167,13 @@ protection:
   container-protection: true
   # 是否保护房间不被爆炸破坏
   explosion-protection: true
+  # 是否阻止活塞推拉房间内外的方块
+  piston-protection: true
+  # 是否阻止房间内点火与燃烧
+  fire-protection: true
+  # 是否保护房间内告示牌内容不被他人改写
+  sign-protection: true
+  # 是否保护房间内的展示框/盔甲架等实体
+  entity-protection: true
   # 门禁系统：房间内的门/活板门/栅栏门只有房主和入住客人可以打开
   door-protection: true

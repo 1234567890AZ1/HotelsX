@@ -53,8 +53,8 @@ public class DepositService {
     /** 单个房间的一次押金持有记录 */
     private static class Hold {
         double amount;
-        Map<String, Material> blocks;   // null = 未做方块检测
-        Map<String, Integer> items;     // null = 未做容器检测
+        Map<String, Material> blocks;              // null = 未做方块检测
+        Map<String, Map<String, Integer>> items;   // null = 未做容器检测（坐标 → 物品类型→数量）
     }
 
     private final HotelsPlugin plugin;
@@ -72,9 +72,12 @@ public class DepositService {
 
     /**
      * 记录押金持有并做快照（应在客人扣款成功后调用）
+     *
+     * <p>按「房间 + 客人」的组合键存储：同一房间先后入住不同客人时，
+     * 前一位客人的押金不会被后一位客人的结算误取，避免押金错退给下一位住客。</p>
      */
-    public void hold(HotelRoom room, double amount) {
-        if (amount <= 0) return;
+    public void hold(HotelRoom room, UUID guestUuid, double amount) {
+        if (amount <= 0 || guestUuid == null) return;
         Hold hold = new Hold();
         hold.amount = amount;
         long volume = room.getVolume();
@@ -85,16 +88,18 @@ public class DepositService {
             hold.items = new HashMap<>();
             snapshot(room, world, hold);
         }
-        holds.put(room.getId(), hold);
+        holds.put(holdKey(room, guestUuid), hold);
     }
 
     /**
      * 结算押金：无损坏则全额退还客人，有损坏则赔付给房主。
+     * 只结算与传入客人 UUID 对应的押金记录。
      *
      * @return 退还给客人的金额（赔付时为 0）
      */
     public double settle(UUID guestUuid, String guestName, HotelRoom room) {
-        Hold hold = holds.remove(room.getId());
+        if (guestUuid == null) return 0;
+        Hold hold = holds.remove(holdKey(room, guestUuid));
         if (hold == null || hold.amount <= 0) return 0;
 
         boolean damaged = hold.blocks != null && detectChanges(room, hold);
@@ -145,7 +150,11 @@ public class DepositService {
 
     /** 房间销毁 / 无需检测时清理内存快照 */
     public void discard(String roomId) {
-        holds.remove(roomId);
+        holds.keySet().removeIf(k -> k.startsWith(roomId + "|"));
+    }
+
+    private static String holdKey(HotelRoom room, UUID guestUuid) {
+        return room.getId() + "|" + guestUuid;
     }
 
     private void snapshot(HotelRoom room, World world, Hold hold) {
@@ -163,7 +172,7 @@ public class DepositService {
                     String key = key(x, y, z);
                     hold.blocks.put(key, block.getType());
                     if (block.getState() instanceof Container) {
-                        hold.items.put(key, countItems((Container) block.getState()));
+                        hold.items.put(key, itemFingerprint((Container) block.getState()));
                     }
                 }
             }
@@ -179,23 +188,27 @@ public class DepositService {
             Block block = world.getBlockAt(pos[0], pos[1], pos[2]);
             if (block.getType() != e.getValue()) return true;
         }
-        for (Map.Entry<String, Integer> e : hold.items.entrySet()) {
+        for (Map.Entry<String, Map<String, Integer>> e : hold.items.entrySet()) {
             int[] pos = parseKey(e.getKey());
             if (pos == null) continue;
             Block block = world.getBlockAt(pos[0], pos[1], pos[2]);
             if (block.getState() instanceof Container) {
-                if (countItems((Container) block.getState()) != e.getValue()) return true;
+                // 按「物品类型 + 数量」比对，防止用等量廉价物品替换贵重物品逃避赔偿
+                if (!itemFingerprint((Container) block.getState()).equals(e.getValue())) return true;
             }
         }
         return false;
     }
 
-    private int countItems(Container container) {
-        int total = 0;
+    /**
+     * 容器内物品指纹：物品类型 → 总数量
+     */
+    private Map<String, Integer> itemFingerprint(Container container) {
+        Map<String, Integer> fp = new HashMap<>();
         for (ItemStack item : container.getInventory().getContents()) {
-            if (item != null) total += item.getAmount();
+            if (item != null) fp.merge(item.getType().name(), item.getAmount(), Integer::sum);
         }
-        return total;
+        return fp;
     }
 
     private static String key(int x, int y, int z) {

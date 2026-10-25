@@ -256,6 +256,8 @@ booking:
   room_not_bookable: "&c该房间未开启预订功能"
   own_room: "&c你不能预订自己的房间"
   room_unavailable: "&c该房间当前不可预订"
+  room_locked: "&c该房间已锁定，无法预订"
+  room_password: "&c该房间设置了入住密码，请直接入住而不要预订"
   room_has_booking: "&c该房间已有未完成的预订"
   delay_positive: "&c请填写大于 0 的开始延迟分钟数"
   too_far: "&c最多只能提前 &e{days} &c天预订"
@@ -397,6 +399,9 @@ listener:
     no_break: "&c你没有权限破坏这个房间内的方块"
     no_place: "&c你没有权限在这个房间内放置方块"
     no_container: "&c你没有权限打开这个房间内的容器"
+    no_ignite: "&c你没有权限在这个房间内点火"
+    no_sign: "&c你没有权限修改这个房间内的告示牌"
+    no_entity: "&c你没有权限操作这个房间内的物品展示框/盔甲架等实体"
   guard:
     no_enter: "&c你没有权限进入该房间"
   door:

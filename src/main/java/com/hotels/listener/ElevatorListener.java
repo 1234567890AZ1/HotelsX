@@ -69,7 +69,7 @@ public class ElevatorListener implements Listener {
                     return;
                 }
                 int maxDistance = plugin.getConfig().getInt("elevator.max-distance", 96);
-                org.bukkit.Location target = findTargetBlock(player.getLocation(), 1, maxDistance);
+                org.bukkit.Location target = findTargetBlock(player, player.getLocation(), 1, maxDistance);
                 if (target != null) {
                     com.hotels.util.SchedulerCompat.teleport(player, target);
                     player.getWorld().playSound(target, Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.0f);
@@ -106,7 +106,7 @@ public class ElevatorListener implements Listener {
         }
 
         int maxDistance = plugin.getConfig().getInt("elevator.max-distance", 96);
-        org.bukkit.Location target = findTargetBlock(player.getLocation(), -1, maxDistance);
+        org.bukkit.Location target = findTargetBlock(player, player.getLocation(), -1, maxDistance);
 
         if (target != null) {
             com.hotels.util.SchedulerCompat.teleport(player, target);
@@ -152,7 +152,7 @@ public class ElevatorListener implements Listener {
                 clicked.getWorld() != null ? clicked.getWorld().getName() : player.getWorld().getName());
     }
 
-    private org.bukkit.Location findTargetBlock(org.bukkit.Location start, int direction, int maxDistance) {
+    private org.bukkit.Location findTargetBlock(Player player, org.bukkit.Location start, int direction, int maxDistance) {
         org.bukkit.World world = start.getWorld();
         if (world == null) return null;
 
@@ -166,7 +166,8 @@ public class ElevatorListener implements Listener {
             }
 
             org.bukkit.Location checkLoc = new org.bukkit.Location(world, start.getX(), y, start.getZ());
-            if (checkLoc.getBlock().getType() == Material.IRON_BLOCK) {
+            // 目标楼层若是别人房间，无权限玩家不能乘电梯直达
+            if (checkLoc.getBlock().getType() == Material.IRON_BLOCK && canAccessBlock(player, checkLoc)) {
                 org.bukkit.Location teleportLoc = new org.bukkit.Location(world, start.getX(), y + 1, start.getZ(),
                         start.getYaw(), start.getPitch());
 

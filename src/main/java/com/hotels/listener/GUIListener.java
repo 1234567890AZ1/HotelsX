@@ -674,6 +674,8 @@ public class GUIListener implements Listener {
                 if (targetRoom.isOccupied()) {
                     Player guest = plugin.getServer().getPlayer(targetRoom.getCurrentGuest());
                     String guestName = guest != null ? guest.getName() : targetRoom.getCurrentGuestName();
+                    // 踢人也属于正常退房：先按损坏情况结算押金，避免押金被后续住客继承
+                    plugin.getDepositService().settle(targetRoom.getCurrentGuest(), guestName, targetRoom);
                     if (guest != null && guest.isOnline()) {
                         plugin.getLang().send(guest, "listener.gui.kicked_by_owner", "room", targetRoom.getName());
                     }
@@ -681,6 +683,7 @@ public class GUIListener implements Listener {
                     targetRoom.setCurrentGuestName(null);
                     targetRoom.setStatus(HotelRoom.RoomStatus.AVAILABLE);
                     targetRoom.setCheckinTime(0);
+                    targetRoom.setCurrentStayMinutes(-1);
                     plugin.getRoomStorage().saveRoom(targetRoom);
                     plugin.log(player, "踢出客人: " + guestName + " 从房间 " + targetRoom.getName());
                     plugin.getLang().send(player, "listener.gui.guest_kicked");
@@ -850,6 +853,21 @@ public class GUIListener implements Listener {
         }
     }
 
+    /**
+     * 判断玩家是否有权进入指定坐标所在的房间（不在任何房间时视为可进入）
+     */
+    private boolean canAccessRoomAt(Player player, Location loc) {
+        HotelRoom room = plugin.getRoomStorage().getRoomAtLocation(loc);
+        if (room == null) return true;
+        if (player.hasPermission("hotels.bypass") || player.hasPermission("hotels.admin")) return true;
+        if (room.getOwner().equals(player.getUniqueId())) return true;
+        if (room.getCurrentGuest() != null && room.getCurrentGuest().equals(player.getUniqueId())) return true;
+        for (RoomCollection col : plugin.getRoomStorage().getAllCollections()) {
+            if (col.getRoomIds().contains(room.getId()) && col.canManage(player.getUniqueId())) return true;
+        }
+        return false;
+    }
+
     @SuppressWarnings("unchecked")
     private void handleElevatorSelectClick(Player player, InventoryClickEvent event, GUIHolder holder) {
         int slot = event.getSlot();
@@ -873,6 +891,12 @@ public class GUIListener implements Listener {
         Location target = floor.getTeleportLocation(player);
         if (target == null) {
             plugin.getLang().send(player, "listener.gui.target_world_missing");
+            return;
+        }
+        // 目标楼层落在别人的房间里时，无权限玩家不能被电梯直接送进去
+        if (!canAccessRoomAt(player, target)) {
+            player.closeInventory();
+            plugin.getLang().send(player, "listener.elevator.cannot_use");
             return;
         }
 
